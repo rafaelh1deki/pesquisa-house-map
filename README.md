@@ -128,6 +128,9 @@ To test how your map will behave in production:
 # Build the optimized production version for your map
 npm run buildmap
 
+# Serve the generated dist/ directory with CORS headers
+npm run preview
+
 ```
 
 This will:
@@ -181,6 +184,7 @@ For more details, read [the WorkAdventure upload documentation](https://docs.wor
 |---------|-------------|
 | `npm run dev` | Start Vite development server with hot reload |
 | `npm run buildmap` | Build only the map files (without frontend) |
+| `npm run preview` | Serve the generated `dist/` directory with CORS headers after `npm run buildmap` |
 | `npm run upload` | Build and upload map to WA Map Storage |
 | `npm run upload-only` | Upload map without rebuilding (requires existing build) |
 

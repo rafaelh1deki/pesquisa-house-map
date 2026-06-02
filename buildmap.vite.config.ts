@@ -31,6 +31,9 @@ export default defineConfig({
             },
         },
     },
+    preview: {
+        cors: true,
+    },
     plugins: [
         ...getMapsOptimizers(maps, optimizerOptions),
     ],
