@@ -173,10 +173,12 @@ clear("above1", 1, 8, 2, 12);
 COUNTER_TOP.forEach((id, i) => set("furniture2", 1 + i, 8, MD + id));
 for (const y of [9, 10, 11]) COUNTER_MID.forEach((id, i) => set("furniture2", 1 + i, y, MD + id));
 COUNTER_BOT.forEach((id, i) => set("furniture2", 1 + i, 12, MD + id));
+// Items sit on rows 8-11 only. Row 12 is the counter's end cap, whose surface stops 7px
+// short of the tile so the dark edge can sit below it -- anything placed there overhangs.
 FRUIT_BOWL.forEach((id, i) => set("furniture3", 1 + i, 8, MD + id));
 SINK.forEach((id, i) => set("furniture3", 1 + i, 9, MD + id));
+SNACK_TRAY.forEach((id, i) => set("furniture3", 1 + i, 10, MD + id));
 ESPRESSO.forEach((id, i) => set("furniture3", 1 + i, 11, MD + id));
-SNACK_TRAY.forEach((id, i) => set("furniture3", 1 + i, 12, MD + id));
 
 // ---------- 4. neon LED runs, routed around whatever sits on the wall ----------
 function neonRun(x0, x1, y = 2) {
