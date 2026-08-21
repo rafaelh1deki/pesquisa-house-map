@@ -1,0 +1,241 @@
+// Applies the modern/startup decoration pass to home-office.tmj.
+// Every placement is by absolute position, so the script is safe to re-run.
+const fs = require("fs");
+const path = require("path");
+
+const mapPath = path.join(__dirname, "..", "home-office.tmj");
+const map = JSON.parse(fs.readFileSync(mapPath, "utf8"));
+const W = map.width;
+
+// ---------- tilesets ----------
+// Both custom sheets grew, so their gid ranges have to be re-allocated: Personal_Decor's
+// 16 tiles would otherwise run straight into Modern_Decor's firstgid and alias onto it.
+const modern = map.tilesets.find((t) => t.name === "Modern_Decor");
+const personal = map.tilesets.find((t) => t.name === "Personal_Decor");
+
+// Everything at or above this gid belongs to one of the two custom sheets.
+const CUSTOM_MIN = Math.min(personal.firstgid, modern.firstgid);
+
+personal.imagewidth = 128; personal.imageheight = 128;
+personal.columns = 4; personal.tilecount = 16;
+personal.firstgid = CUSTOM_MIN;
+
+modern.imagewidth = 256; modern.imageheight = 416;
+modern.columns = 8; modern.tilecount = 104;
+modern.firstgid = personal.firstgid + personal.tilecount;
+
+const PD = personal.firstgid;
+const MD = modern.firstgid;
+map.tilesets.sort((a, b) => a.firstgid - b.firstgid);
+
+const room = map.tilesets.find((t) => t.name === "WA_Room_Builder").firstgid;
+const zones = map.tilesets.find((t) => t.name === "WA_Special_Zones").firstgid;
+const BLOCKED = zones + 2;
+
+// Modern_Decor indices (see gen-modern-decor.cjs)
+const CHAIR_DOWN = { tl: 0, tr: 1, bl: 8, br: 9 };
+const CHAIR_UP = { tl: 2, tr: 3, bl: 10, br: 11 };
+const ARCADE_TOP = 4, ARCADE_BOTTOM = 12;
+const LEAF_MONSTERA = 5, POT_MONSTERA = 13;
+const LEAF_PALM = 6, POT_PALM = 14;
+const CHAIR_RIGHT = 16, CHAIR_LEFT = 17;
+const NEON_MID = 18, NEON_L = 19, NEON_R = 20;
+const BEAN_TEAL = 21, BEAN_DARK = 22, POUF = 23;
+const DESK_PLANT = 24, BEAN_LIME = 25;
+const ART_BLOCK = 26, ART_PHOTO = 27, ART_NEON = 28, ART_SMALL = 29, ART_MIRROR = 30, ART_LOGO = 31;
+const SOFA_TOP = [32, 33, 34, 35], SOFA_BOT = [40, 41, 42, 43];
+const TABLE_TOP = [36, 37], TABLE_BOT = [44, 45];
+const SIDEBOARD_TOP = [38, 39], SIDEBOARD_BOT = [46, 47];
+const ARMCHAIR_R = 48, ARMCHAIR_R_B = 56;
+const ARMCHAIR_L = 49, ARMCHAIR_L_B = 57;
+const PINGPONG_TOP = [50, 51, 52, 53], PINGPONG_BOT = [58, 59, 60, 61];
+const BBQ_TOP = [54, 55], BBQ_BOT = [62, 63];
+const SCULPTURE = 64, SCULPTURE_B = 72;
+const LAMP = 65, LAMP_B = 73;
+const VASE = 66, VASE_B = 74;
+const COUNTER_TOP = [67, 68], COUNTER_MID = [75, 76], COUNTER_BOT = [69, 70];
+// counter-top items are 2 tiles wide so they sit centred on the 2-tile-wide counter
+const SINK = [80, 81], ESPRESSO = [82, 83], FRUIT_BOWL = [84, 85], SNACK_TRAY = [86, 87];
+const FRAMED_LOGO_TOP = [88, 89], FRAMED_LOGO_BOT = [96, 97];
+
+// Personal_Decor indices
+const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
+const LOGO_TOP = [8, 9, 10], LOGO_BOT = [12, 13, 14];
+const ENERGY_CAN = 11;
+
+// ---------- layer access ----------
+function flatten(layers) {
+  let out = [];
+  for (const l of layers) out = out.concat(l.type === "group" ? flatten(l.layers) : [l]);
+  return out;
+}
+const flat = flatten(map.layers);
+const L = Object.fromEntries(flat.filter((l) => l.type === "tilelayer").map((l) => [l.name, l]));
+const set = (layer, x, y, gid) => { L[layer].data[y * W + x] = gid; };
+const clear = (layer, x0, y0, x1, y1) => {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(layer, x, y, 0);
+};
+// places a horizontal strip of tiles starting at x0
+const strip = (layer, x0, y, ids) => ids.forEach((id, i) => set(layer, x0 + i, y, MD + id));
+
+// ---------- 0. wipe every custom-sheet tile so re-runs (and gid re-allocation) heal ----------
+const FLIP = 0x80000000 | 0x40000000 | 0x20000000;
+let wiped = 0;
+for (const layer of flat) {
+  if (layer.type !== "tilelayer") continue;
+  for (let i = 0; i < layer.data.length; i++) {
+    const raw = layer.data[i];
+    if (raw && (raw & ~FLIP) >= CUSTOM_MIN) { layer.data[i] = 0; wiped++; }
+  }
+}
+
+// ---------- 1. desk chairs, correctly oriented ----------
+for (const y of [4, 6]) {
+  set("furniture2", 10, y, MD + CHAIR_RIGHT);
+  set("furniture2", 13, y, MD + CHAIR_LEFT);
+  set("furniture2", 16, y, MD + CHAIR_RIGHT);
+  set("furniture2", 19, y, MD + CHAIR_LEFT);
+}
+for (let y = 8; y <= 11; y++) {
+  set("furniture2", 25, y, MD + CHAIR_RIGHT);
+  set("furniture2", 28, y, MD + CHAIR_LEFT);
+}
+for (const x of [12, 14, 16]) {
+  set("furniture2", x, 9, MD + CHAIR_DOWN.tl);
+  set("furniture2", x + 1, 9, MD + CHAIR_DOWN.tr);
+  set("furniture2", x, 10, MD + CHAIR_DOWN.bl);
+  set("furniture2", x + 1, 10, MD + CHAIR_DOWN.br);
+  set("furniture2", x, 12, MD + CHAIR_UP.tl);
+  set("furniture2", x + 1, 12, MD + CHAIR_UP.tr);
+  set("furniture2", x, 13, MD + CHAIR_UP.bl);
+  set("furniture2", x + 1, 13, MD + CHAIR_UP.br);
+}
+set("furniture3", 17, 5, MD + DESK_PLANT);
+set("furniture3", 27, 10, MD + DESK_PLANT);
+set("furniture3", 12, 5, PD + ENERGY_CAN);
+
+// ---------- 2. the neon sign, centred between the two windows ----------
+// Windows sit at x11-12 and x17-18; their centres are 192px apart. The sign's board is
+// inset inside a 4-tile block so placing it at x13..x16 lands it exactly on that midpoint.
+clear("walls2", 13, 1, 16, 2);
+SIGN_TOP.forEach((id, i) => set("walls2", 13 + i, 1, PD + id));
+SIGN_BOT.forEach((id, i) => set("walls2", 13 + i, 2, PD + id));
+
+// ---------- 3. the studio logo, woven into a mat at the entrance ----------
+// The spawn point sits at tile (2,17), so this is the first thing anyone sees on arrival.
+LOGO_TOP.forEach((id, i) => set("floor2", 2 + i, 16, PD + id));
+LOGO_BOT.forEach((id, i) => set("floor2", 2 + i, 17, PD + id));
+
+// ---------- 3b. modern reception around the mat ----------
+clear("furniture2", 5, 15, 5, 17);          // old beige armchairs + round side table
+clear("above1", 0, 14, 2, 15);              // old terracotta palm
+clear("furniture2", 0, 14, 2, 15);
+set("above1", 2, 14, MD + LEAF_PALM);       // modern planter where the palm stood
+set("furniture2", 2, 15, MD + POT_PALM);
+set("above1", 5, 14, MD + SCULPTURE);       // lobby sculpture, against the office wall
+set("furniture2", 5, 15, MD + SCULPTURE_B);
+// console table between the planter and the sculpture (moved out of the crowded lounge,
+// where it straddled the room's edge and half-covered the doorway)
+SIDEBOARD_TOP.forEach((id, i) => set("above1", 3 + i, 14, MD + id));
+SIDEBOARD_BOT.forEach((id, i) => set("furniture2", 3 + i, 15, MD + id));
+clear("above1", 1, 13, 2, 13);              // stray fronds left by the old planter
+set("furniture2", 5, 16, MD + ARMCHAIR_L);  // waiting chair facing the room
+set("furniture2", 5, 17, MD + ARMCHAIR_L_B);
+set("above1", 1, 16, MD + LAMP);            // floor lamp beside the stairs
+set("furniture2", 1, 17, MD + LAMP_B);
+
+// ---------- 3c. modern kitchen counter ----------
+clear("furniture2", 1, 8, 2, 12);
+clear("furniture3", 1, 8, 2, 12);
+clear("above1", 1, 8, 2, 12);
+COUNTER_TOP.forEach((id, i) => set("furniture2", 1 + i, 8, MD + id));
+for (const y of [9, 10, 11]) COUNTER_MID.forEach((id, i) => set("furniture2", 1 + i, y, MD + id));
+COUNTER_BOT.forEach((id, i) => set("furniture2", 1 + i, 12, MD + id));
+FRUIT_BOWL.forEach((id, i) => set("furniture3", 1 + i, 8, MD + id));
+SINK.forEach((id, i) => set("furniture3", 1 + i, 9, MD + id));
+ESPRESSO.forEach((id, i) => set("furniture3", 1 + i, 11, MD + id));
+SNACK_TRAY.forEach((id, i) => set("furniture3", 1 + i, 12, MD + id));
+
+// ---------- 4. neon LED runs, routed around whatever sits on the wall ----------
+function neonRun(x0, x1, y = 2) {
+  for (let x = x0; x <= x1; x++) {
+    set("above1", x, y, MD + (x === x0 ? NEON_L : x === x1 ? NEON_R : NEON_MID));
+  }
+}
+clear("above1", 1, 2, 29, 2);
+// No run in the lounge: the sofa's backrest occupies that wall row, and the room already
+// carries neon from the arcade and the logo board.
+neonRun(8, 12);      // office, left of the sign
+neonRun(17, 21);     // office, right of the sign (the sign now reaches x16)
+neonRun(23, 24);     // right-hand room, left of the whiteboard
+// x28-29 is left clear for the framed logo, which needs a full 2x2 of wall
+
+// ---------- 5. wall art, no two neighbours alike ----------
+const art = [
+  [5, ART_SMALL],                                     // lounge
+  [9, ART_BLOCK], [10, ART_SMALL],                    // office, left of the sign
+  [19, ART_PHOTO], [20, ART_MIRROR], [21, ART_NEON],  // office, right of the sign
+  [23, ART_MIRROR], [24, ART_BLOCK],                  // right room, left of the whiteboard
+];
+for (const [x, id] of art) set("walls2", x, 1, MD + id);
+
+// the studio logo, framed, on the meeting room's wall
+FRAMED_LOGO_TOP.forEach((id, i) => set("walls2", 28 + i, 1, MD + id));
+FRAMED_LOGO_BOT.forEach((id, i) => set("walls2", 28 + i, 2, MD + id));
+
+// ---------- 6. modern lounge ----------
+clear("furniture2", 1, 2, 7, 7);
+clear("furniture3", 1, 2, 7, 7);
+clear("above1", 1, 3, 7, 7);
+clear("above2", 1, 2, 7, 7);
+SOFA_TOP.forEach((id, i) => set("furniture2", 2 + i, 2, MD + id));
+SOFA_BOT.forEach((id, i) => set("furniture2", 2 + i, 3, MD + id));
+// tall plant tucked into the room's corner rather than floating beside the sofa
+set("above1", 1, 2, MD + LEAF_PALM);
+set("furniture2", 1, 3, MD + POT_PALM);
+TABLE_TOP.forEach((id, i) => set("furniture2", 3 + i, 4, MD + id));
+TABLE_BOT.forEach((id, i) => set("furniture2", 3 + i, 5, MD + id));
+set("furniture2", 1, 4, MD + ARMCHAIR_R);
+set("furniture2", 1, 5, MD + ARMCHAIR_R_B);
+set("furniture2", 6, 4, MD + ARMCHAIR_L);
+set("furniture2", 6, 5, MD + ARMCHAIR_L_B);
+set("furniture3", 6, 2, MD + ARCADE_TOP);
+set("furniture3", 6, 3, MD + ARCADE_BOTTOM);
+
+// ---------- 7. plants, in clusters that hug a wall or a desk ----------
+const planters = [
+  [8, 4, "monstera"], [8, 6, "palm"],        // stacked against the office's left wall
+  [21, 4, "palm"], [21, 6, "monstera"],      // stacked against the right wall
+  [23, 5, "palm"], [24, 4, "monstera"],      // right-hand room, beside the doorway
+  [11, 12, "monstera"], [18, 12, "palm"],    // bookending the bench desk
+  [29, 5, "monstera"],
+];
+for (const [x, yTop, kind] of planters) {
+  set("above1", x, yTop, MD + (kind === "palm" ? LEAF_PALM : LEAF_MONSTERA));
+  set("furniture2", x, yTop + 1, MD + (kind === "palm" ? POT_PALM : POT_MONSTERA));
+}
+
+// ---------- 8. dried-stem vase, paired with the planter below it on the same wall ----------
+set("above1", 29, 3, MD + VASE);
+set("furniture2", 29, 4, MD + VASE_B);
+
+// ---------- 9. the old bean-bag corner is now open circulation space ----------
+// It sat in the middle of the floor with nothing to anchor it. The rug goes back to
+// plain flooring and the walkway to the meeting room is left clear.
+for (let y = 9; y <= 11; y++) for (let x = 19; x <= 21; x++) {
+  set("floor1", x, y, room + 358);
+  set("furniture2", x, y, 0);
+}
+
+// ---------- 10. ping-pong table filling the space in front of the kitchen ----------
+strip("furniture2", 4, 10, PINGPONG_TOP);
+strip("furniture2", 4, 11, PINGPONG_BOT);
+for (let y = 10; y <= 11; y++) for (let x = 4; x <= 7; x++) set("collisions", x, y, BLOCKED);
+
+// ---------- 11. barbecue out in the garden ----------
+strip("furniture2", 9, 18, BBQ_TOP);
+strip("furniture2", 9, 19, BBQ_BOT);
+for (let x = 9; x <= 10; x++) set("collisions", x, 19, BLOCKED);
+
+fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
+console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);
