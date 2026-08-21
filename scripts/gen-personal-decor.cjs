@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const { PNG } = require("pngjs");
 const { scriptWord, measure } = require("./script-font.cjs");
-const { logoPolylines, strokeCoverage, discCoverage, fitLogoBox } = require("./logo-mark.cjs");
+const { logoCoverage, strokeCoverage, discCoverage, fitLogoBox } = require("./logo-mark.cjs");
 
 const TILE = 32;
 const COLS = 4;
@@ -116,12 +116,9 @@ for (let y = 6; y <= MAT_H - 7; y++) {
   setPx(LOGO_X + MAT_W - 7, LOGO_Y + y, 96, 100, 110, 200);
 }
 {
-  // Fills the mat's inner panel as far as the reference aspect allows. The gap between the
-  // body's belly and the horizontal bar is only ~11% of the mark's height, so every pixel
-  // of height matters -- squeeze the box and the two strokes merge into one.
+  // Fills the mat's inner panel as far as the artwork's aspect allows.
   const box = fitLogoBox(LOGO_X + MAT_W / 2, LOGO_Y + MAT_H / 2, 80, 52);
-  const polylines = logoPolylines(box);
-  const cov = strokeCoverage(polylines, 2.8);
+  const cov = logoCoverage(box);
   // printed on fabric, not a neon tube: tight soft edge instead of a wide bloom
   renderNeon(cov, WHITE, [120, 124, 132], 1, 90);
 }

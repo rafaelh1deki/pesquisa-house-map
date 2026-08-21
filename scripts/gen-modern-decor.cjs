@@ -753,13 +753,12 @@ function counterSurface(ox, oy, y0, h) {
 
 // ---------- framed studio logo, 2x2 (idx 88,89 / 96,97) ----------
 {
-  const { logoPolylines, strokeCoverage, fitLogoBox } = require("./logo-mark.cjs");
+  const { logoCoverage, fitLogoBox } = require("./logo-mark.cjs");
   const ox = 0, oy = TILE * 11;
   rect(ox + 3, oy + 3, 58, 58, [44, 45, 50]);           // frame
   rect(ox + 6, oy + 6, 52, 52, [14, 15, 17]);           // mount
   rect(ox + 6, oy + 6, 52, 1, [70, 72, 78], 160);
-  const polylines = logoPolylines(fitLogoBox(ox + 32, oy + 32, 48, 44));
-  const cov = strokeCoverage(polylines, 2.2);
+  const cov = logoCoverage(fitLogoBox(ox + 32, oy + 32, 48, 44));
   for (const [key, c] of cov) {
     const [x, y] = key.split(",").map(Number);
     px(x, y, 248, 249, 250, Math.round(255 * c));
