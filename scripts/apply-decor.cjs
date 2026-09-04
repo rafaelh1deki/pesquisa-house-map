@@ -65,8 +65,8 @@ const zones = map.tilesets.find((t) => t.name === "WA_Special_Zones").firstgid;
 const BLOCKED = zones + 2;
 
 // Modern_Decor indices (see gen-modern-decor.cjs)
-const CHAIR_DOWN = { tl: 0, tr: 1, bl: 8, br: 9 };
-const CHAIR_UP = { tl: 2, tr: 3, bl: 10, br: 11 };
+// idx 0-3 / 8-11 hold the original seam-centred bench chairs. They are no longer placed:
+// a player can never line up with a sprite centred between two tiles.
 const ARCADE_TOP = 4, ARCADE_BOTTOM = 12;
 const LEAF_MONSTERA = 5, POT_MONSTERA = 13;
 const LEAF_PALM = 6, POT_PALM = 14;
@@ -93,6 +93,10 @@ const FRAMED_LOGO_TOP = [88, 89], FRAMED_LOGO_BOT = [96, 97];
 const RUG = [104, 105, 106, 112, 113, 114, 120, 121, 122];
 const CAFE_TOP = [107, 108], CAFE_BOT = [115, 116];
 const STOOL = 109;
+// tile-aligned bench pieces
+const CHAIR_DOWN_1_TOP = 110, CHAIR_DOWN_1_BOT = 118;
+const CHAIR_UP_1_TOP = 111, CHAIR_UP_1_BOT = 119;
+const LAPTOP_TOWARD = 123, LAPTOP_AWAY = 124;
 
 // Personal_Decor indices
 const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
@@ -136,15 +140,26 @@ for (let y = 8; y <= 11; y++) {
   set("furniture2", 25, y, MD + CHAIR_RIGHT);
   set("furniture2", 28, y, MD + CHAIR_LEFT);
 }
+// Bench desk: three back-to-back workstations, each centred on a single tile so a player
+// standing there lines up with the chair. The old sprites were two tiles wide and centred
+// on the seam between them, which put every avatar half a tile off from its chair.
+clear("furniture2", 12, 9, 17, 13);
+clear("furniture3", 12, 9, 17, 13);
+clear("above1", 12, 9, 17, 13);
 for (const x of [12, 14, 16]) {
-  set("furniture2", x, 9, MD + CHAIR_DOWN.tl);
-  set("furniture2", x + 1, 9, MD + CHAIR_DOWN.tr);
-  set("furniture2", x, 10, MD + CHAIR_DOWN.bl);
-  set("furniture2", x + 1, 10, MD + CHAIR_DOWN.br);
-  set("furniture2", x, 12, MD + CHAIR_UP.tl);
-  set("furniture2", x + 1, 12, MD + CHAIR_UP.tr);
-  set("furniture2", x, 13, MD + CHAIR_UP.bl);
-  set("furniture2", x + 1, 13, MD + CHAIR_UP.br);
+  set("furniture2", x, 9, MD + CHAIR_DOWN_1_TOP);   // seat above the desk
+  set("furniture2", x, 10, MD + CHAIR_DOWN_1_BOT);
+  set("furniture2", x, 11, MD + LAPTOP_AWAY);       // its laptop, screen turned away from us
+  set("furniture2", x, 12, MD + LAPTOP_TOWARD);     // the facing seat's laptop
+
+  // The lower seat faces away from us, so its back is between the viewer and whoever sits
+  // in it: the chair has to draw OVER the player, which means the "above" group. Standing
+  // on row 12 then reads as sitting -- head above the backrest, body hidden behind it.
+  set("above1", x, 12, MD + CHAIR_UP_1_TOP);
+  set("above1", x, 13, MD + CHAIR_UP_1_BOT);
+  // Row 12 is desk, and so blocked; open just the three seat tiles so those seats are
+  // reachable. Row 11 stays blocked, so nobody can walk through the desk.
+  set("collisions", x, 12, 0);
 }
 set("furniture3", 17, 5, MD + DESK_PLANT);
 set("furniture3", 27, 10, MD + DESK_PLANT);

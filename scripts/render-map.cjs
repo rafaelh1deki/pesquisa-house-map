@@ -101,7 +101,38 @@ function drawLayer(layer, offX = 0, offY = 0) {
   }
 }
 
-for (const layer of map.layers) drawLayer(layer);
+// Optional stand-in avatars: --avatar x,y[;x,y...]
+// Drawn after the furniture layers but before the "above" group, which is exactly where
+// WorkAdventure composites the player. Lets us check whether a chair reads as "sat in"
+// or "stood on" without launching the real client.
+const avatarArg = (process.argv.find((a) => a.startsWith("--avatar=")) || "").split("=")[1];
+const avatars = avatarArg
+  ? avatarArg.split(";").map((p) => p.split(",").map(Number))
+  : [];
+
+function drawAvatar(tx, ty) {
+  const x0 = tx * tileW, y0 = ty * tileH;
+  // rough woka proportions: head in the top 40%, body below
+  for (let y = 0; y < tileH; y++) {
+    for (let x = 0; x < tileW; x++) {
+      const inHead = y >= 4 && y < 15 && x >= 10 && x < 22;
+      const inBody = y >= 15 && y < 30 && x >= 8 && x < 24;
+      if (!inHead && !inBody) continue;
+      const c = inHead ? [242, 202, 168] : [220, 60, 140];
+      const dxp = x0 + x, dyp = y0 + y;
+      if (dxp < 0 || dyp < 0 || dxp >= mapWpx || dyp >= mapHpx) continue;
+      const di = (dyp * mapWpx + dxp) * 4;
+      out.data[di] = c[0]; out.data[di + 1] = c[1]; out.data[di + 2] = c[2]; out.data[di + 3] = 255;
+    }
+  }
+}
+
+for (const layer of map.layers) {
+  if (avatars.length && layer.type === "group" && layer.name === "above") {
+    for (const [ax, ay] of avatars) drawAvatar(ax, ay);
+  }
+  drawLayer(layer);
+}
 
 fs.writeFileSync(outPath, PNG.sync.write(out));
 console.log("Wrote", outPath, `${mapWpx}x${mapHpx}`);

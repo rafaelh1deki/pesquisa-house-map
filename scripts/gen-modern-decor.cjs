@@ -841,6 +841,63 @@ rugTile(2, 2, false, true, true, false);    // 122 bottom-right
   ellipse(ox + 13, oy + 13, 4, 2, [110, 220, 212], 170);
 }
 
+// ---------- tile-aligned bench chairs and laptops ----------
+// The original bench sprites are two tiles wide and centred on the seam between them, so a
+// player -- who always stands at a tile's centre -- can never line up with one. These are
+// one tile wide and centred, so standing on the tile reads as sitting in the chair.
+
+// idx 110 / 118: chair facing DOWN (person sits above a desk, we see the cushion)
+{
+  const ox = TILE * 6, cx = ox + 16;
+  const oy = TILE * 13;
+  starBase(cx, oy + TILE + 12);                                  // base falls in the lower tile
+  vgrad(cx - 10, oy + 30, 20, 13, SEAT_TOP, SEAT_BOT);      // seat cushion
+  rect(cx - 10, oy + 30, 20, 1, [110, 115, 126], 190);
+  rect(cx - 10, oy + 41, 20, 2, NEON, 235);                 // neon front lip
+  vgrad(cx - 9, oy + 17, 18, 14, BACK_TOP, BACK_BOT);       // backrest
+  rect(cx - 7, oy + 14, 14, 4, BACK_TOP);                   // headrest
+  rect(cx - 11, oy + 18, 2, 11, WING);
+  rect(cx + 9, oy + 18, 2, 11, WING);
+  rect(cx - 1, oy + 15, 2, 16, NEON);
+  rect(cx - 1, oy + 15, 1, 16, [170, 255, 150], 150);
+}
+// idx 111 / 119: chair facing UP (person sits below a desk, we see the back of the seat)
+{
+  const ox = TILE * 7, cx = ox + 16;
+  const oy = TILE * 13;
+  starBase(cx, oy + TILE + 12);
+  vgrad(cx - 10, oy + 16, 20, 26, BACK_TOP, BACK_BOT);      // solid back slab
+  rect(cx - 8, oy + 13, 16, 4, BACK_TOP);
+  rect(cx - 12, oy + 18, 2, 17, WING);
+  rect(cx + 10, oy + 18, 2, 17, WING);
+  rect(cx - 1, oy + 14, 2, 28, NEON);
+  rect(cx - 1, oy + 14, 1, 28, [170, 255, 150], 150);
+  rect(cx - 5, oy + 28, 10, 1, NEON, 70);
+}
+
+// idx 123: laptop for the person sitting BELOW -- screen tilts toward them, so we see its face
+{
+  const ox = TILE * 3, oy = TILE * 15, cx = ox + 16;
+  rect(cx - 11, oy + 6, 22, 13, [58, 56, 78]);              // screen shell
+  rect(cx - 9, oy + 8, 18, 9, [226, 228, 236]);             // screen face
+  rect(cx - 12, oy + 19, 24, 8, [72, 70, 92]);              // keyboard deck
+  for (let r = 0; r < 3; r++) {
+    for (let k = 0; k < 9; k++) rect(cx - 10 + k * 2, oy + 20 + r * 2, 1, 1, [40, 39, 54]);
+  }
+  rect(cx - 4, oy + 26, 8, 1, [52, 50, 68]);                // trackpad
+}
+// idx 124: laptop for the person sitting ABOVE -- we see the back of the raised screen
+{
+  const ox = TILE * 4, oy = TILE * 15, cx = ox + 16;
+  rect(cx - 12, oy + 5, 24, 8, [72, 70, 92]);               // keyboard deck, nearest them
+  for (let r = 0; r < 3; r++) {
+    for (let k = 0; k < 9; k++) rect(cx - 10 + k * 2, oy + 6 + r * 2, 1, 1, [40, 39, 54]);
+  }
+  rect(cx - 11, oy + 13, 22, 13, [50, 48, 68]);             // back of the screen
+  rect(cx - 11, oy + 13, 22, 1, [96, 94, 120]);
+  rect(cx - 3, oy + 18, 6, 4, [78, 76, 98]);                // logo plate
+}
+
 const outPath = path.join(__dirname, "..", "tilesets", "Modern_Decor.png");
 fs.writeFileSync(outPath, PNG.sync.write(png));
 console.log("Wrote", outPath, `${png.width}x${png.height}`);
