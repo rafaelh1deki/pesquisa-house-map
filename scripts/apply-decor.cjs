@@ -16,12 +16,22 @@ const personal = map.tilesets.find((t) => t.name === "Personal_Decor");
 // Everything at or above this gid belongs to one of the two custom sheets.
 const CUSTOM_MIN = Math.min(personal.firstgid, modern.firstgid);
 
-personal.imagewidth = 128; personal.imageheight = 128;
-personal.columns = 4; personal.tilecount = 16;
+// Read the sheets' real dimensions out of their PNG headers rather than hardcoding them.
+// Hardcoded counts silently drift the moment a generator adds a row, which leaves every
+// tile past the stale count pointing outside the tileset.
+function pngSize(name) {
+  const buf = fs.readFileSync(path.join(__dirname, "..", "tilesets", name));
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+function sizeTileset(ts, name) {
+  const { w, h } = pngSize(name);
+  ts.imagewidth = w; ts.imageheight = h;
+  ts.columns = w / ts.tilewidth;
+  ts.tilecount = (w / ts.tilewidth) * (h / ts.tileheight);
+}
+sizeTileset(personal, "Personal_Decor.png");
+sizeTileset(modern, "Modern_Decor.png");
 personal.firstgid = CUSTOM_MIN;
-
-modern.imagewidth = 256; modern.imageheight = 416;
-modern.columns = 8; modern.tilecount = 104;
 modern.firstgid = personal.firstgid + personal.tilecount;
 
 // No tilesetCopyright on these two. The build merges every tileset into one "Chunk 1"
@@ -79,6 +89,10 @@ const COUNTER_TOP = [67, 68], COUNTER_MID = [75, 76], COUNTER_BOT = [69, 70];
 // counter-top items are 2 tiles wide so they sit centred on the 2-tile-wide counter
 const SINK = [80, 81], ESPRESSO = [82, 83], FRUIT_BOWL = [84, 85], SNACK_TRAY = [86, 87];
 const FRAMED_LOGO_TOP = [88, 89], FRAMED_LOGO_BOT = [96, 97];
+// nine-slice rug: [topLeft, top, topRight, left, centre, right, botLeft, bot, botRight]
+const RUG = [104, 105, 106, 112, 113, 114, 120, 121, 122];
+const CAFE_TOP = [107, 108], CAFE_BOT = [115, 116];
+const STOOL = 109;
 
 // Personal_Decor indices
 const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
@@ -255,6 +269,38 @@ for (let y = 9; y <= 11; y++) for (let x = 19; x <= 21; x++) {
 strip("furniture2", 4, 10, PINGPONG_TOP);
 strip("furniture2", 4, 11, PINGPONG_BOT);
 for (let y = 10; y <= 11; y++) for (let x = 4; x <= 7; x++) set("collisions", x, y, BLOCKED);
+
+// ---------- 10b. area rugs, to zone the flat grey floor ----------
+// Laid on floor2 (above the floor, below furniture) so people still walk over them.
+function placeRug(x0, y0, x1, y1) {
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const row = y === y0 ? 0 : y === y1 ? 2 : 1;
+      const col = x === x0 ? 0 : x === x1 ? 2 : 1;
+      set("floor2", x, y, MD + RUG[row * 3 + col]);
+    }
+  }
+}
+placeRug(25, 8, 28, 12);    // anchors the meeting table
+placeRug(11, 9, 18, 13);    // under the bench desk cluster
+placeRug(25, 4, 28, 6);     // the standup area below the whiteboard
+placeRug(10, 4, 13, 7);     // under each desk pod, so the top band is not bare grey
+placeRug(16, 4, 19, 7);
+
+// ---------- 10c. standup area facing the whiteboard ----------
+// That corner was a bare grey floor with four scattered plants and no reason to exist.
+// The seats zigzag across two rows so they read as a group turned toward the board,
+// rather than as objects dropped at random.
+set("furniture2", 25, 5, MD + BEAN_TEAL);
+set("furniture2", 26, 6, MD + POUF);
+set("furniture2", 27, 5, MD + BEAN_DARK);
+set("furniture2", 28, 6, MD + STOOL);
+
+// ---------- 10d. coffee corner beside the kitchen ----------
+CAFE_TOP.forEach((id, i) => set("furniture2", 3 + i, 12, MD + id));
+CAFE_BOT.forEach((id, i) => set("furniture2", 3 + i, 13, MD + id));
+set("furniture2", 2, 13, MD + STOOL);
+set("furniture2", 5, 13, MD + STOOL);
 
 // ---------- 11. barbecue out in the garden ----------
 strip("furniture2", 9, 18, BBQ_TOP);

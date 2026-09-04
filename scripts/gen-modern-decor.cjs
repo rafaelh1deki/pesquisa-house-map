@@ -21,7 +21,7 @@ const { PNG } = require("pngjs");
 
 const TILE = 32;
 const COLS = 8;
-const ROWS = 13;
+const ROWS = 16;
 const png = new PNG({ width: TILE * COLS, height: TILE * ROWS });
 png.data.fill(0);
 
@@ -763,6 +763,82 @@ function counterSurface(ox, oy, y0, h) {
     const [x, y] = key.split(",").map(Number);
     px(x, y, 248, 249, 250, Math.round(255 * c));
   }
+}
+
+// ---------- nine-slice area rug (rows 13-15, cols 0-2) ----------
+// Nine slices rather than one tile so a rug can be laid at any size. The lattice pattern
+// has an 8px period, which divides 32 exactly, so it carries across tile seams unbroken.
+const RUG_BASE = [202, 197, 188];
+const RUG_LIGHT = [214, 210, 202];
+const RUG_LINE = [168, 162, 152];
+
+function rugTile(col, row, top, right, bottom, left) {
+  const ox = col * TILE, oy = (13 + row) * TILE;
+  for (let y = 0; y < TILE; y++) {
+    for (let x = 0; x < TILE; x++) {
+      // absolute position inside the rug, so the lattice never breaks at a seam
+      const ax = ox + x, ay = oy + y;
+      const lattice = (ax + ay) % 8 === 0 || (ax - ay + 256) % 8 === 0;
+      const c = lattice ? RUG_LIGHT : RUG_BASE;
+      px(ox + x, oy + y, c[0], c[1], c[2]);
+    }
+  }
+  // classic double-line border, drawn only on the rug's outer sides
+  const band = (side) => {
+    for (const inset of [1, 5]) {
+      if (side === "top") rect(ox, oy + inset, TILE, 1, RUG_LINE);
+      if (side === "bottom") rect(ox, oy + TILE - 1 - inset, TILE, 1, RUG_LINE);
+      if (side === "left") rect(ox + inset, oy, 1, TILE, RUG_LINE);
+      if (side === "right") rect(ox + TILE - 1 - inset, oy, 1, TILE, RUG_LINE);
+    }
+  };
+  if (top) band("top");
+  if (bottom) band("bottom");
+  if (left) band("left");
+  if (right) band("right");
+  // soften the outermost row/column so the rug edge reads as fabric, not a hard cut
+  if (top) rect(ox, oy, TILE, 1, RUG_LINE, 120);
+  if (bottom) rect(ox, oy + TILE - 1, TILE, 1, RUG_LINE, 120);
+  if (left) rect(ox, oy, 1, TILE, RUG_LINE, 120);
+  if (right) rect(ox + TILE - 1, oy, 1, TILE, RUG_LINE, 120);
+}
+rugTile(0, 0, true, false, false, true);    // 104 top-left
+rugTile(1, 0, true, false, false, false);   // 105 top
+rugTile(2, 0, true, true, false, false);    // 106 top-right
+rugTile(0, 1, false, false, false, true);   // 112 left
+rugTile(1, 1, false, false, false, false);  // 113 centre
+rugTile(2, 1, false, true, false, false);   // 114 right
+rugTile(0, 2, false, false, true, true);    // 120 bottom-left
+rugTile(1, 2, false, false, true, false);   // 121 bottom
+rugTile(2, 2, false, true, true, false);    // 122 bottom-right
+
+// ---------- round cafe table, 2x2 (idx 107,108 / 115,116) ----------
+{
+  const ox = TILE * 3, oy = TILE * 13;
+  // The top hides most of the base: only a few pixels of pedestal and foot show below its
+  // lower edge (oy+42), otherwise the base reads as a dark blob detached from the table.
+  shadow(ox + 32, oy + 47, 12, 3, 85);
+  rect(ox + 30, oy + 34, 4, 11, [78, 81, 88]);           // pedestal
+  ellipse(ox + 32, oy + 45, 8, 3, [96, 100, 108]);       // foot
+  ellipse(ox + 32, oy + 28, 22, 16, [214, 210, 204]);    // top, underside
+  ellipse(ox + 32, oy + 26, 22, 16, OFFWHITE);
+  ellipse(ox + 24, oy + 20, 8, 5, [250, 251, 252], 150); // sheen
+  // a mug and a small plant on it
+  ellipse(ox + 24, oy + 26, 4, 3, [232, 236, 240]);
+  ellipse(ox + 24, oy + 25, 3, 2, [120, 84, 56]);
+  rect(ox + 38, oy + 22, 7, 7, POT_LIGHT);
+  ellipse(ox + 41, oy + 19, 5, 4, LEAF_M);
+  ellipse(ox + 40, oy + 18, 3, 2, LEAF_L, 190);
+}
+
+// ---------- upholstered stool (idx 109) ----------
+{
+  const ox = TILE * 5, oy = TILE * 13;
+  softShadowRect(ox + 10, oy + 24, 13, 4, 90);
+  for (const lx of [11, 20]) rect(ox + lx, oy + 18, 2, 7, [92, 74, 52]);
+  ellipse(ox + 16, oy + 17, 10, 6, [22, 148, 142]);
+  ellipse(ox + 16, oy + 15, 10, 6, [30, 176, 168]);
+  ellipse(ox + 13, oy + 13, 4, 2, [110, 220, 212], 170);
 }
 
 const outPath = path.join(__dirname, "..", "tilesets", "Modern_Decor.png");
