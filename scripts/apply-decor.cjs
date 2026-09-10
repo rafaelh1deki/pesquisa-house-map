@@ -330,5 +330,19 @@ strip("furniture2", 9, 18, BBQ_TOP);
 strip("furniture2", 9, 19, BBQ_BOT);
 for (let x = 9; x <= 10; x++) set("collisions", x, 19, BLOCKED);
 
+// ---------- 12. the stairwell is sealed ----------
+// The stairs lead to conference.tmj, which is not registered as a room in the
+// WorkAdventure.cloud world, so walking in there answers "access denied". Block the
+// two tiles and drop the exit until that second map actually exists; the staircase
+// art stays put so reopening it is just deleting this block.
+set("collisions", 0, 16, BLOCKED);
+set("collisions", 0, 17, BLOCKED);
+for (const layer of map.layers) {
+  if (layer.type !== "objectgroup") continue;
+  layer.objects = layer.objects.filter(
+    (o) => !(o.properties || []).some((pr) => pr.name === "exitUrl")
+  );
+}
+
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);
