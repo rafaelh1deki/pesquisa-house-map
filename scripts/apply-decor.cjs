@@ -97,6 +97,7 @@ const STOOL = 109;
 const CHAIR_DOWN_1_TOP = 110, CHAIR_DOWN_1_BOT = 118;
 const CHAIR_UP_1_TOP = 111, CHAIR_UP_1_BOT = 119;
 const LAPTOP_TOWARD = 123, LAPTOP_AWAY = 124;
+const DRINKS_TOP = 117, DRINKS_BOT = 125;
 
 // Personal_Decor indices
 const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
@@ -143,9 +144,14 @@ for (let y = 8; y <= 11; y++) {
 // Bench desk: three back-to-back workstations, each centred on a single tile so a player
 // standing there lines up with the chair. The old sprites were two tiles wide and centred
 // on the seam between them, which put every avatar half a tile off from its chair.
+// The desk is five tiles (x12..x16) so the three stations, spaced two apart, sit centred on
+// it. At six tiles the stations bunched to the left and the whole cluster looked off-centre.
+clear("furniture1", 17, 11, 17, 12);
 clear("furniture2", 12, 9, 17, 13);
 clear("furniture3", 12, 9, 17, 13);
 clear("above1", 12, 9, 17, 13);
+set("collisions", 17, 11, 0);
+set("collisions", 17, 12, 0);
 for (const x of [12, 14, 16]) {
   set("furniture2", x, 9, MD + CHAIR_DOWN_1_TOP);   // seat above the desk
   set("furniture2", x, 10, MD + CHAIR_DOWN_1_BOT);
@@ -181,10 +187,12 @@ LOGO_BOT.forEach((id, i) => set("floor2", 2 + i, 17, PD + id));
 clear("furniture2", 5, 15, 5, 17);          // old beige armchairs + round side table
 clear("above1", 0, 14, 2, 15);              // old terracotta palm
 clear("furniture2", 0, 14, 2, 15);
+// Kept deliberately sparse. This corner had a planter, a console, a sculpture on a plinth,
+// a floor lamp, an armchair and the logo mat all inside a few tiles, which made the
+// entrance read as clutter to walk around rather than a space to arrive in. The sculpture
+// and the lamp are gone; the mat, the console and one chair carry it.
 set("above1", 2, 14, MD + LEAF_PALM);       // modern planter where the palm stood
 set("furniture2", 2, 15, MD + POT_PALM);
-set("above1", 5, 14, MD + SCULPTURE);       // lobby sculpture, against the office wall
-set("furniture2", 5, 15, MD + SCULPTURE_B);
 // console table between the planter and the sculpture (moved out of the crowded lounge,
 // where it straddled the room's edge and half-covered the doorway)
 SIDEBOARD_TOP.forEach((id, i) => set("above1", 3 + i, 14, MD + id));
@@ -192,8 +200,6 @@ SIDEBOARD_BOT.forEach((id, i) => set("furniture2", 3 + i, 15, MD + id));
 clear("above1", 1, 13, 2, 13);              // stray fronds left by the old planter
 set("furniture2", 5, 16, MD + ARMCHAIR_L);  // waiting chair facing the room
 set("furniture2", 5, 17, MD + ARMCHAIR_L_B);
-set("above1", 1, 16, MD + LAMP);            // floor lamp beside the stairs
-set("furniture2", 1, 17, MD + LAMP_B);
 
 // ---------- 3c. modern kitchen counter ----------
 clear("furniture2", 1, 8, 2, 12);
@@ -227,9 +233,11 @@ neonRun(23, 24);     // right-hand room, left of the whiteboard
 const art = [
   [5, ART_SMALL],                                     // lounge
   [9, ART_BLOCK], [10, ART_SMALL],                    // office, left of the sign
-  [19, ART_PHOTO], [20, ART_MIRROR], [21, ART_NEON],  // office, right of the sign
+  [21, ART_NEON],                                     // office, right of the sign
   [23, ART_MIRROR], [24, ART_BLOCK],                  // right room, left of the whiteboard
 ];
+// x19/x20 are left bare: the dark print that hung there read as an appliance mounted above
+// the LED strip. There is now an actual drinks machine standing on the floor below it.
 for (const [x, id] of art) set("walls2", x, 1, MD + id);
 
 // the studio logo, framed, on the meeting room's wall
@@ -258,19 +266,15 @@ set("furniture3", 6, 3, MD + ARCADE_BOTTOM);
 // ---------- 7. plants, in clusters that hug a wall or a desk ----------
 const planters = [
   [8, 4, "monstera"], [8, 6, "palm"],        // stacked against the office's left wall
-  [21, 4, "palm"], [21, 6, "monstera"],      // stacked against the right wall
-  [23, 5, "palm"], [24, 4, "monstera"],      // right-hand room, beside the doorway
-  [11, 12, "monstera"], [18, 12, "palm"],    // bookending the bench desk
-  [29, 5, "monstera"],
+  [21, 6, "monstera"],                       // right wall (x21,y4 is now the drinks machine)
+  [23, 4, "palm"], [29, 4, "monstera"],      // mirrored either side of the standup rug
+  [10, 12, "monstera"], [18, 12, "palm"],    // bookending the bench desk, clear of its rug
 ];
 for (const [x, yTop, kind] of planters) {
   set("above1", x, yTop, MD + (kind === "palm" ? LEAF_PALM : LEAF_MONSTERA));
   set("furniture2", x, yTop + 1, MD + (kind === "palm" ? POT_PALM : POT_MONSTERA));
 }
 
-// ---------- 8. dried-stem vase, paired with the planter below it on the same wall ----------
-set("above1", 29, 3, MD + VASE);
-set("furniture2", 29, 4, MD + VASE_B);
 
 // ---------- 9. the old bean-bag corner is now open circulation space ----------
 // It sat in the middle of the floor with nothing to anchor it. The rug goes back to
@@ -297,19 +301,23 @@ function placeRug(x0, y0, x1, y1) {
   }
 }
 placeRug(25, 8, 28, 12);    // anchors the meeting table
-placeRug(11, 9, 18, 13);    // under the bench desk cluster
-placeRug(25, 4, 28, 6);     // the standup area below the whiteboard
+placeRug(11, 9, 17, 13);    // under the bench desk, centred on the stations at x14
+placeRug(24, 4, 28, 6);     // standup area, centred under the whiteboard at x26
 placeRug(10, 4, 13, 7);     // under each desk pod, so the top band is not bare grey
 placeRug(16, 4, 19, 7);
 
 // ---------- 10c. standup area facing the whiteboard ----------
 // That corner was a bare grey floor with four scattered plants and no reason to exist.
-// The seats zigzag across two rows so they read as a group turned toward the board,
-// rather than as objects dropped at random.
+// Seats mirrored about x26, the whiteboard's centre line, so the group reads as arranged
+// around the board instead of scattered.
 set("furniture2", 25, 5, MD + BEAN_TEAL);
-set("furniture2", 26, 6, MD + POUF);
 set("furniture2", 27, 5, MD + BEAN_DARK);
-set("furniture2", 28, 6, MD + STOOL);
+set("furniture2", 26, 6, MD + POUF);
+
+// drinks machine, standing on the floor under the wall
+set("furniture2", 20, 3, MD + DRINKS_TOP);
+set("furniture2", 20, 4, MD + DRINKS_BOT);
+set("collisions", 20, 4, BLOCKED);
 
 // ---------- 10d. coffee corner beside the kitchen ----------
 CAFE_TOP.forEach((id, i) => set("furniture2", 3 + i, 12, MD + id));

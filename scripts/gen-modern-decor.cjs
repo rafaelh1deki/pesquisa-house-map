@@ -672,7 +672,7 @@ function counterSurface(ox, oy, y0, h) {
   rect(ox + 1, oy + 25, 62, 3, CAB_EDGE);
   softShadowRect(ox + 3, oy + 28, 58, 3, 70);
 }
-// idx 71: sink basin
+// idx 71: sink basin (unused; superseded by the 2-tile version at idx 80/81)
 {
   const ox = TILE * 7, oy = TILE * 8;
   rect(ox + 5, oy + 9, 22, 17, [150, 155, 161]);
@@ -697,16 +697,20 @@ function counterSurface(ox, oy, y0, h) {
 
 // ---------- counter-top items, each 2 tiles wide so they centre on the counter ----------
 // The counter is two tiles across, so a one-tile item always reads as off to one side.
-// idx 80,81: sink
+// idx 80,81: sink. The counter runs down the room's LEFT wall, so the tap has to stand on
+// the wall side with the basin reaching into the room -- a tap at the top only makes sense
+// on a counter set against a top wall.
 {
   const ox = 0, oy = TILE * 10;
-  rect(ox + 18, oy + 9, 28, 18, [150, 155, 161]);
-  rect(ox + 20, oy + 11, 24, 14, [116, 121, 128]);
-  rect(ox + 20, oy + 11, 24, 1, [92, 96, 103]);
-  ellipse(ox + 32, oy + 18, 2, 2, [70, 74, 80]);
-  rect(ox + 30, oy + 3, 4, 7, [178, 183, 190]);
-  rect(ox + 30, oy + 3, 4, 1, [212, 216, 222]);
-  rect(ox + 32, oy + 7, 6, 2, [178, 183, 190]);
+  rect(ox + 22, oy + 7, 28, 20, [150, 155, 161]);         // basin rim
+  rect(ox + 24, oy + 9, 24, 16, [116, 121, 128]);         // basin well
+  rect(ox + 24, oy + 9, 24, 1, [92, 96, 103]);
+  ellipse(ox + 36, oy + 17, 2, 2, [70, 74, 80]);          // drain
+  rect(ox + 11, oy + 12, 5, 10, [178, 183, 190]);         // tap body, against the wall
+  rect(ox + 11, oy + 12, 5, 1, [212, 216, 222]);
+  rect(ox + 16, oy + 15, 8, 3, [178, 183, 190]);          // spout reaching over the basin
+  rect(ox + 16, oy + 15, 8, 1, [212, 216, 222]);
+  rect(ox + 12, oy + 8, 3, 4, [196, 200, 206]);           // lever
 }
 // idx 82,83: espresso machine with two cups
 {
@@ -768,9 +772,11 @@ function counterSurface(ox, oy, y0, h) {
 // ---------- nine-slice area rug (rows 13-15, cols 0-2) ----------
 // Nine slices rather than one tile so a rug can be laid at any size. The lattice pattern
 // has an 8px period, which divides 32 exactly, so it carries across tile seams unbroken.
-const RUG_BASE = [202, 197, 188];
-const RUG_LIGHT = [214, 210, 202];
-const RUG_LINE = [168, 162, 152];
+// Deliberately mid-tone: the desks are a pale blue-grey, and against the light greige this
+// started as, they had almost no contrast and read as one flat mass with the rug.
+const RUG_BASE = [156, 152, 144];
+const RUG_LIGHT = [170, 166, 157];
+const RUG_LINE = [124, 120, 112];
 
 function rugTile(col, row, top, right, bottom, left) {
   const ox = col * TILE, oy = (13 + row) * TILE;
@@ -896,6 +902,42 @@ rugTile(2, 2, false, true, true, false);    // 122 bottom-right
   rect(cx - 11, oy + 13, 22, 13, [50, 48, 68]);             // back of the screen
   rect(cx - 11, oy + 13, 22, 1, [96, 94, 120]);
   rect(cx - 3, oy + 18, 6, 4, [78, 76, 98]);                // logo plate
+}
+
+// ---------- drinks machine, 1 wide x 2 tall (idx 117 top / 125 bottom) ----------
+// Stands on the floor. The wall art that used to sit here read as an appliance mounted
+// above the LED strip, which is why it looked wrong.
+{
+  const ox = TILE * 5, oy = TILE * 14;
+  // upper cabinet: lit display of bottles behind glass
+  vgrad(ox + 4, oy + 4, 24, 28, [40, 42, 48], [28, 30, 35]);
+  rect(ox + 4, oy + 4, 24, 3, [58, 61, 68]);
+  rect(ox + 7, oy + 9, 18, 19, [16, 24, 30]);              // glass
+  rect(ox + 7, oy + 9, 18, 1, [96, 150, 160], 150);        // glass highlight
+  const bottles = [[210, 70, 60], [90, 170, 220], [244, 190, 60], [120, 200, 110]];
+  bottles.forEach((c, i) => {
+    const bx = ox + 9 + i * 4;
+    rect(bx, oy + 12, 3, 7, c);
+    rect(bx, oy + 11, 3, 1, [230, 234, 238]);
+    rect(bx, oy + 21, 3, 6, c);
+    rect(bx, oy + 20, 3, 1, [230, 234, 238]);
+  });
+  rect(ox + 4, oy + 6, 24, 1, NEON, 200);                  // brand light strip
+}
+{
+  const ox = TILE * 5, oy = TILE * 15;
+  shadow(ox + 16, oy + 27, 12, 3, 110);
+  vgrad(ox + 4, oy + 0, 24, 25, [30, 32, 37], [20, 21, 25]);
+  rect(ox + 7, oy + 1, 18, 6, [16, 24, 30]);               // last row of the display
+  rect(ox + 20, oy + 9, 6, 8, [52, 55, 62]);               // keypad
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 2; k++) {
+    px(ox + 21 + k * 2, oy + 10 + r * 2, 150, 155, 162);
+  }
+  px(ox + 25, oy + 10, NEON[0], NEON[1], NEON[2]);         // ready light
+  rect(ox + 7, oy + 12, 10, 7, [14, 15, 18]);              // dispensing slot
+  rect(ox + 7, oy + 12, 10, 1, [60, 63, 70]);
+  rect(ox + 4, oy + 21, 24, 3, [44, 46, 52]);              // kick plate
+  for (const fx of [6, 24]) rect(ox + fx, oy + 24, 2, 2, [16, 17, 20]);
 }
 
 const outPath = path.join(__dirname, "..", "tilesets", "Modern_Decor.png");
