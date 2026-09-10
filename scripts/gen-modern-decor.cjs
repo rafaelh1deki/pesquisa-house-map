@@ -21,7 +21,7 @@ const { PNG } = require("pngjs");
 
 const TILE = 32;
 const COLS = 8;
-const ROWS = 16;
+const ROWS = 18;
 const png = new PNG({ width: TILE * COLS, height: TILE * ROWS });
 png.data.fill(0);
 
@@ -767,6 +767,57 @@ function counterSurface(ox, oy, y0, h) {
     const [x, y] = key.split(",").map(Number);
     px(x, y, 248, 249, 250, Math.round(255 * c));
   }
+}
+
+// ---------- wall-mounted TV, 3 wide x 2 tall (idx 128,129,130 / 136,137,138) ----------
+// Replaces the easel that stood in the standup area. It hangs on the wall rows, so there
+// is no stand and no floor shadow -- only the soft bloom the panel throws onto the wall
+// above and below it, which is what sells "mounted" instead of "leaning".
+{
+  const ox = 0, oy = TILE * 16;
+  const W = TILE * 3, H = TILE * 2;
+
+  // bloom on the wall around the panel, drawn first so the bezel sits on top of it
+  for (let y = -4; y < H + 6; y++) {
+    for (let x = -5; x < W + 5; x++) {
+      const dx = x < 3 ? 3 - x : x > W - 4 ? x - (W - 4) : 0;
+      const dy = y < 4 ? 4 - y : y > H - 5 ? y - (H - 5) : 0;
+      const d = Math.hypot(dx, dy);
+      if (d === 0 || d > 6) continue;
+      px(ox + x, oy + y, 120, 190, 255, Math.round(46 * (1 - d / 6)));
+    }
+  }
+
+  rect(ox + 2, oy + 3, W - 4, H - 7, [26, 27, 31]);        // bezel
+  rect(ox + 2, oy + 3, W - 4, 1, [58, 60, 66]);            // top highlight
+  rect(ox + 5, oy + 6, W - 10, H - 13, [10, 11, 14]);      // screen well
+
+  // the picture: a dim video frame, dark enough that the play badge reads
+  vgrad(ox + 6, oy + 7, W - 12, H - 15, [28, 42, 66], [14, 20, 34]);
+  // a couple of blurred highlights so it looks like a frame, not a blank panel
+  ellipse(ox + 28, oy + 18, 13, 7, [46, 74, 112], 150);
+  ellipse(ox + 62, oy + 26, 16, 8, [38, 60, 92], 130);
+  // glass sheen sweeping across the top-left
+  for (let y = 7; y < H - 8; y++) {
+    for (let x = 6; x < W - 6; x++) {
+      const t = (x - 6) * 0.55 + (y - 7) * 1.6;
+      if (t > 26 && t < 40) px(ox + x, oy + y, 210, 228, 250, 22);
+    }
+  }
+
+  // play badge, centred on the screen
+  // Integers on purpose: px() indexes the buffer directly, so a fractional centre makes
+  // every pixel of the badge a no-op.
+  const cx = ox + W / 2, cy = oy + 31;
+  ellipse(cx, cy, 9, 9, [8, 9, 12], 150);
+  for (let y = -6; y <= 6; y++) {
+    const half = Math.round((1 - Math.abs(y) / 6) * 6);
+    for (let x = -3; x <= half; x++) px(cx + x + 1, cy + y, 236, 240, 245, 235);
+  }
+
+  rect(ox + 5, oy + H - 8, W - 10, 1, [6, 7, 9]);          // screen bottom edge
+  rect(ox + 2, oy + H - 5, W - 4, 1, [40, 42, 47]);        // chin
+  px(ox + W - 8, oy + H - 5, 90, 235, 120, 255);           // power LED
 }
 
 // ---------- nine-slice area rug (rows 13-15, cols 0-2) ----------

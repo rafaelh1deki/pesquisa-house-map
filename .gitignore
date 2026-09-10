@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .env.secret
 dist.zip
+
+# Local map inspection renders (regenerate with scripts/render-map.cjs + crop-map.cjs)
+*.preview.png
+[abcd]-*.png
+logo-compare.png
+tv-preview.png

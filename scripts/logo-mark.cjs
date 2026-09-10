@@ -1,11 +1,9 @@
 // Single source of truth for the studio's rooster logo, traced from the vector artwork.
 //
-// The mark is NOT a uniform line drawing. It is two kinds of geometry:
-//   * the wing/leaf is a FILLED closed shape, with a sharp V notch cut into its top edge
-//     that splits it into two lobes
-//   * the bar, the leg and the hanging loop are one thick stroke of constant width
-// Drawing the wing as an outline (which is what the neon sign does) loses the mark's
-// weight, so both are rendered here and composited into one coverage map.
+// The mark is one continuous line of constant width: the wing/leaf is an OUTLINE, not a
+// filled shape, and the bar, the leg and the hanging loop carry that same stroke. The
+// wing's top edge dips into a sharp V notch, which reads as two lobes without ever
+// closing the shape. Filling the wing makes it a blob and loses the mark entirely.
 //
 // All coordinates are normalised into a 0..1 box measured off the artwork, whose bounding
 // box is 590x472 -- callers must preserve that aspect or the shape skews.
@@ -103,7 +101,7 @@ function logoCoverage(box, ss = 4) {
           const cx = px + (sx + 0.5) * step;
           const cy = py + (sy + 0.5) * step;
           if (
-            pointInPolygon(cx, cy, wing) ||
+            nearPolyline(cx, cy, wing.concat([wing[0]]), half) ||
             nearPolyline(cx, cy, bar, half) ||
             nearPolyline(cx, cy, leg, half) ||
             nearPolyline(cx, cy, loop, half)

@@ -98,6 +98,7 @@ const CHAIR_DOWN_1_TOP = 110, CHAIR_DOWN_1_BOT = 118;
 const CHAIR_UP_1_TOP = 111, CHAIR_UP_1_BOT = 119;
 const LAPTOP_TOWARD = 123, LAPTOP_AWAY = 124;
 const DRINKS_TOP = 117, DRINKS_BOT = 125;
+const TV_TOP = [128, 129, 130], TV_BOT = [136, 137, 138];
 
 // Personal_Decor indices
 const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
@@ -350,6 +351,42 @@ for (const layer of map.layers) {
 // read as walking into thin air: two in the doorway below the lounge, one beside the
 // stairwell landing.
 for (const [x, y] of [[6, 7], [7, 7], [1, 15]]) set("collisions", x, y, 0);
+
+// ---------- 14. wall TV in the standup area ----------
+// Replaces the 3x3 easel that stood at x25-27. The panel hangs on the wall rows the way
+// the framed logo next to it does, and row 3 is freed so people can walk right up to it.
+clear("furniture2", 25, 1, 27, 3);
+TV_TOP.forEach((id, i) => set("walls2", 25 + i, 1, MD + id));
+TV_BOT.forEach((id, i) => set("walls2", 25 + i, 2, MD + id));
+for (let x = 25; x <= 27; x++) set("collisions", x, 3, 0);
+
+// The strip of floor right under the screen opens the video. onaction, not automatic --
+// nobody wants a video launching because they walked past it.
+{
+  const objects = map.layers.find((l) => l.type === "objectgroup").objects;
+  const i = objects.findIndex((o) => o.name === "tvYoutube");
+  // Reuse the id on a re-run, or the script would allocate a fresh one every time and
+  // never settle -- this file is rewritten in place, so it has to converge.
+  const id = i >= 0 ? objects[i].id : Math.max(map.nextobjectid || 1, ...objects.map((o) => o.id + 1));
+  if (i >= 0) objects.splice(i, 1);
+  objects.push({
+    id,
+    name: "tvYoutube",
+    type: "area",
+    visible: true,
+    rotation: 0,
+    x: 25 * 32, y: 3 * 32, width: 3 * 32, height: 32,
+    properties: [
+      // The /watch/ form refuses to render in an iframe; /embed/ is the one that loads.
+      { name: "openWebsite", type: "string", value: "https://www.youtube.com/embed/SKeb7mRrmCs" },
+      { name: "openWebsiteTrigger", type: "string", value: "onaction" },
+      { name: "openWebsiteTriggerMessage", type: "string", value: "Aperte ESPACO para assistir" },
+      { name: "openWebsitePolicy", type: "string", value: "fullscreen; autoplay; picture-in-picture" },
+      { name: "openWebsiteWidth", type: "int", value: 60 },
+    ],
+  });
+  map.nextobjectid = Math.max(map.nextobjectid || 1, id + 1);
+}
 
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);

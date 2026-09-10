@@ -787,9 +787,9 @@
         3,
         0,
         0,
-        3,
-        3,
-        3,
+        0,
+        0,
+        0,
         0,
         0,
         3,
@@ -3395,9 +3395,9 @@
             0,
             3002,
             2998,
-            0,
-            0,
-            0,
+            3100,
+            3101,
+            3102,
             3060,
             3061,
             0,
@@ -3426,9 +3426,9 @@
             0,
             0,
             0,
-            0,
-            0,
-            0,
+            3108,
+            3109,
+            3110,
             3068,
             3069,
             0,
@@ -4734,9 +4734,9 @@
             0,
             0,
             0,
-            142,
-            143,
-            144,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -4765,9 +4765,9 @@
             0,
             0,
             0,
-            152,
-            153,
-            154,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -4796,9 +4796,9 @@
             0,
             0,
             0,
-            162,
-            163,
-            164,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -6140,6 +6140,44 @@
           "width": 32,
           "x": 64,
           "y": 544
+        },
+        {
+          "id": 21,
+          "name": "tvYoutube",
+          "type": "area",
+          "visible": true,
+          "rotation": 0,
+          "x": 800,
+          "y": 96,
+          "width": 96,
+          "height": 32,
+          "properties": [
+            {
+              "name": "openWebsite",
+              "type": "string",
+              "value": "https://www.youtube.com/embed/SKeb7mRrmCs"
+            },
+            {
+              "name": "openWebsiteTrigger",
+              "type": "string",
+              "value": "onaction"
+            },
+            {
+              "name": "openWebsiteTriggerMessage",
+              "type": "string",
+              "value": "Aperte ESPACO para assistir"
+            },
+            {
+              "name": "openWebsitePolicy",
+              "type": "string",
+              "value": "fullscreen; autoplay; picture-in-picture"
+            },
+            {
+              "name": "openWebsiteWidth",
+              "type": "int",
+              "value": 60
+            }
+          ]
         }
       ],
       "opacity": 1,
@@ -7489,7 +7527,7 @@
     }
   ],
   "nextlayerid": 63,
-  "nextobjectid": 20,
+  "nextobjectid": 22,
   "orientation": "orthogonal",
   "properties": [
     {
@@ -7682,10 +7720,10 @@
       "name": "Modern_Decor",
       "image": "tilesets/Modern_Decor.png",
       "imagewidth": 256,
-      "imageheight": 512,
+      "imageheight": 576,
       "tilewidth": 32,
       "tileheight": 32,
-      "tilecount": 128,
+      "tilecount": 144,
       "columns": 8,
       "margin": 0,
       "spacing": 0
