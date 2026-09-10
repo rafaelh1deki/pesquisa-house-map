@@ -344,5 +344,12 @@ for (const layer of map.layers) {
   );
 }
 
+// ---------- 13. invisible walls ----------
+// Collision tiles left behind by the starter map's furniture, which our redecoration
+// removed without clearing the block underneath. Nothing is drawn on these, so they
+// read as walking into thin air: two in the doorway below the lounge, one beside the
+// stairwell landing.
+for (const [x, y] of [[6, 7], [7, 7], [1, 15]]) set("collisions", x, y, 0);
+
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);
