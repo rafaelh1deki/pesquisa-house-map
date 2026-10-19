@@ -435,7 +435,9 @@ function floorFor(x, y, f1) {
   if (f1 !== BASE_FLOOR) return null;
   if (x >= 1 && x <= 7 && y >= 8 && y <= 13) return "tile";             // kitchen
   if (x >= 23 && x <= 29 && y >= 3 && y <= 13) return "carpet";         // standup + meeting
-  if ((y === 8 && x >= 8 && x <= 22) || (x === 8 && y >= 9 && y <= 16) || (x === 9 && y >= 14 && y <= 16))
+  // The doorway is two tiles wide (x8-9), so the path stays two wide all the way up to the
+  // turn; narrowing it to one tile above the door read as the path breaking off.
+  if ((y === 8 && x >= 8 && x <= 22) || ((x === 8 || x === 9) && y >= 9 && y <= 16))
     return "terrazzo";
   if (y >= 3 && y <= 13) return "concrete";                             // open office
   return null;
