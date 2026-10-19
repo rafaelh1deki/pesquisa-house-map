@@ -415,7 +415,6 @@ for (let x = 25; x <= 27; x++) set("collisions", x, 3, 0);
 
 // ---------- 15. the refit: a floor plan, materials, and lower light ----------
 const MAT = { concrete: 144, terrazzo: 146, oak: 148, carpet: 150, tile: 160 };
-const BOOTH_TOP = 162, BOOTH_FLOOR = 170, BOOTH_GLASS = 171;
 const NEON_BASE_L = 164, NEON_BASE_M = 165, NEON_BASE_R = 166;
 const SPILL_L = { top: 172, middle: 173, bottom: 174 };
 const SPILL_R = { top: 187, middle: 188, bottom: 189 };
@@ -488,17 +487,6 @@ function neonBaseboard(x0, x1, y) {
 neonBaseboard(10, 21, 13);    // open office, along the garden wall
 neonBaseboard(1, 5, 17);      // reception, behind the arrival mat
 
-// --- 15d. call booths in the dead strip between the kitchen and the bench desk ---
-// 18 tiles of bare floor sat on the busiest route in the office. Two glass booths turn it
-// into the one place indoors you can take a call without the office overhearing it.
-for (const x of [9, 10]) {
-  set("furniture2", x, 9, MD + BOOTH_TOP);
-  set("furniture2", x, 10, MD + BOOTH_FLOOR);
-  set("above1", x, 10, MD + BOOTH_GLASS);
-  set("collisions", x, 9, BLOCKED);
-  set("collisions", x, 10, 0);
-}
-
 // --- 15e. reception: a desk to arrive at ---
 // The console and the planter beside it make way for a desk facing the mat, set to the
 // right so the way in from the spawn point (x2) stays open up the left side.
@@ -524,8 +512,12 @@ function upsertArea(name, x, y, w, h, properties) {
   });
   map.nextobjectid = Math.max(map.nextobjectid || 1, id + 1);
 }
-// silent: whoever steps inside a booth drops out of proximity chat for their call
-upsertArea("callBooths", 9, 10, 2, 1, [{ name: "silent", type: "bool", value: true }]);
+// The call booths were tried and dropped; strip their zone from maps that still carry it.
+{
+  const objects = map.layers.find((l) => l.type === "objectgroup").objects;
+  const i = objects.findIndex((o) => o.name === "callBooths");
+  if (i >= 0) objects.splice(i, 1);
+}
 
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);
