@@ -21,7 +21,7 @@ const { PNG } = require("pngjs");
 
 const TILE = 32;
 const COLS = 8;
-const ROWS = 18;
+const ROWS = 24;
 const png = new PNG({ width: TILE * COLS, height: TILE * ROWS });
 png.data.fill(0);
 
@@ -989,6 +989,286 @@ rugTile(2, 2, false, true, true, false);    // 122 bottom-right
   rect(ox + 7, oy + 12, 10, 1, [60, 63, 70]);
   rect(ox + 4, oy + 21, 24, 3, [44, 46, 52]);              // kick plate
   for (const fx of [6, 24]) rect(ox + fx, oy + 24, 2, 2, [16, 17, 20]);
+}
+
+// ======================================================================================
+// The refit: floor materials, call booths, reception desk, side windows, neon baseboards,
+// and dimmed copies of the bright wall faces. Laid out on rows 18-23:
+//   144,145/152,153 concrete     146,147/154,155 terrazzo   (2x2 seamless blocks; the
+//   148,149/156,157 oak          150,151/158,159 carpet      map picks by x%2, y%2)
+//   160,161/168,169 kitchen tile
+//   162 / 170       call booth, top (blocked) / floor the player stands on
+//   171             call booth glass front, drawn ABOVE the player
+//   164,165,166     neon baseboard: left cap / middle / right cap
+//   172,173,174     window daylight spill, wall on the LEFT:  top / middle / bottom
+//   187,188,189     window daylight spill, wall on the RIGHT: top / middle / bottom
+//   176,177,178 / 184,185,186   reception desk, 3x2
+//   179,180,181     side-wall window: top / middle / bottom (derived from wall tile 477)
+//   182,183,190,191 wall faces 578, 603, 655, 680, dimmed
+// ======================================================================================
+{
+  const hash = (x, y, s) => {
+    let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+  // Value noise on a P-pixel torus, so a P-wide texture tiles with no seam.
+  const vnoise = (x, y, C, P, s) => {
+    const n = P / C;
+    const gx = x / C, gy = y / C;
+    const x0 = Math.floor(gx), y0 = Math.floor(gy);
+    const fx = gx - x0, fy = gy - y0;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const v = (i, j) => hash(((i % n) + n) % n, ((j % n) + n) % n, s);
+    const top = v(x0, y0) + (v(x0 + 1, y0) - v(x0, y0)) * sx;
+    const bot = v(x0, y0 + 1) + (v(x0 + 1, y0 + 1) - v(x0, y0 + 1)) * sx;
+    return top + (bot - top) * sy;
+  };
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  const put = (x, y, c, a = 255) => px(x, y, clamp(c[0]), clamp(c[1]), clamp(c[2]), a);
+  const NEON_CORE = [57, 255, 20], NEON_HOT = [200, 255, 190];
+
+  // A material is one seamless 64x64 texture cut into a 2x2 block of tiles. The map picks
+  // the tile by position parity, so the texture flows across tile seams instead of
+  // stamping the same 32px square over and over.
+  function material(col, row, fn) {
+    const ox = TILE * col, oy = TILE * row;
+    for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) put(ox + x, oy + y, fn(x, y));
+  }
+
+  // --- floors. All sit well below the old floor's ~220 brightness: the room was too lit. ---
+  // polished concrete for the open office
+  material(0, 18, (x, y) => {
+    const d = (vnoise(x, y, 16, 64, 11) - 0.5) * 14
+            + (vnoise(x, y, 4, 64, 12) - 0.5) * 6
+            + (hash(x, y, 13) - 0.5) * 5;
+    return [160 + d, 161 + d, 165 + d];
+  });
+  // terrazzo for the circulation axis: darker, with chips, so it reads as a path
+  material(2, 18, (x, y) => {
+    const d = (vnoise(x, y, 16, 64, 21) - 0.5) * 8;
+    const r = hash(x, y, 22);
+    if (r < 0.045) return [200, 200, 196];
+    if (r < 0.07) return [86, 88, 92];
+    if (r < 0.08) return [98, 150, 112];
+    return [126 + d, 127 + d, 131 + d];
+  });
+  // light oak planks for the lounge and reception
+  material(4, 18, (x, y) => {
+    const row = Math.floor(y / 8);
+    if (y % 8 === 7) return [116, 88, 62];                       // seam between rows
+    const j1 = Math.floor(hash(row, 0, 31) * 64);
+    const j2 = (j1 + 24 + Math.floor(hash(row, 1, 31) * 17)) % 64;
+    if (x === j1 || x === j2) return [122, 94, 68];              // butt joints
+    const span = (j2 - j1 + 64) % 64;
+    const seg = ((x - j1 + 64) % 64) < span ? 0 : 1;
+    const tone = (hash(row, seg + 2, 31) - 0.5) * 18;
+    const grain = (hash(Math.floor(x / 5), y, 34 + seg) - 0.5) * 7;
+    const lift = y % 8 === 0 ? 5 : 0;                            // edge catching the light
+    const d = tone + grain + lift;
+    return [168 + d, 134 + d * 0.85, 98 + d * 0.7];
+  });
+  // low-pile carpet for the right-hand room
+  material(6, 18, (x, y) => {
+    const d = (vnoise(x, y, 16, 64, 41) - 0.5) * 6
+            + (hash(x, y, 42) - 0.5) * 6
+            + ((x + y) % 2 === 0 ? 2 : -2);
+    return [98 + d, 104 + d, 118 + d];
+  });
+  // porcelain tile for the kitchen
+  material(0, 20, (x, y) => {
+    const lx = x % 16, ly = y % 16;
+    if (lx === 15 || ly === 15) return [132, 128, 122];          // grout
+    const v = (hash(Math.floor(x / 16), Math.floor(y / 16), 51) - 0.5) * 8;
+    const hi = lx === 0 || ly === 0 ? 6 : 0;
+    const n = (hash(x, y, 52) - 0.5) * 3;
+    const d = v + hi + n;
+    return [172 + d, 167 + d, 159 + d];
+  });
+
+  // --- call booth, 1 wide x 2 tall ---
+  // A glass-fronted pod. The player stands on the lower tile, so its front glass and frame
+  // are a separate tile placed in an "above" layer: whoever is inside reads as behind glass.
+  {
+    const ox = TILE * 2, oy = TILE * 20;
+    const FRAME = [40, 42, 48], FRAME_HI = [74, 77, 85];
+    // back wall in acoustic felt, then the booth's own floor
+    for (let y = 8; y < 62; y++) for (let x = 3; x < 29; x++) {
+      if (y < 31) {
+        const s = (x % 3 === 0 ? -5 : 0) - (y - 8) * 0.25;
+        put(ox + x, oy + y, [32 + s, 58 + s, 47 + s]);
+      } else {
+        const n = (hash(x, y, 61) - 0.5) * 4;
+        put(ox + x, oy + y, [46 + n, 48 + n, 54 + n]);
+      }
+    }
+    // warm pool from a small lamp, falling on the felt above the shelf
+    for (let y = 12; y < 31; y++) for (let x = 3; x < 29; x++) {
+      const d = Math.hypot((x - 20) / 10, (y - 24) / 7);
+      if (d < 1) px(ox + x, oy + y, 255, 214, 150, Math.round(70 * (1 - d) * (1 - d)));
+    }
+    rect(ox + 20, oy + 18, 1, 7, [70, 70, 74]);                 // lamp stem
+    rect(ox + 18, oy + 16, 5, 3, [232, 222, 202]);              // lamp shade
+    rect(ox + 5, oy + 25, 22, 3, [176, 146, 108]);              // shelf desk
+    rect(ox + 5, oy + 28, 22, 2, [118, 92, 66]);
+    rect(ox + 8, oy + 22, 8, 3, [58, 62, 70]);                  // laptop, lid open
+    rect(ox + 9, oy + 22, 6, 2, [92, 150, 124]);
+    // roof seen from above, with a green "free" light on the lip
+    rect(ox, oy, 32, 6, FRAME);
+    rect(ox, oy, 32, 1, [60, 62, 69]);
+    rect(ox, oy + 6, 32, 2, FRAME_HI);
+    rect(ox + 14, oy + 2, 4, 2, NEON_CORE);
+    for (const [dx, dy, a] of [[-1, 0, 90], [4, 0, 90], [-1, 1, 90], [4, 1, 90], [0, -1, 70], [1, -1, 70], [2, -1, 70], [3, -1, 70], [0, 2, 70], [1, 2, 70], [2, 2, 70], [3, 2, 70]])
+      px(ox + 14 + dx, oy + 2 + dy, NEON_CORE[0], NEON_CORE[1], NEON_CORE[2], a);
+    // posts, baked into both tiles; the glass tile repeats them over the player
+    rect(ox, oy + 8, 3, 56, FRAME);
+    rect(ox + 29, oy + 8, 3, 56, FRAME);
+    rect(ox + 2, oy + 8, 1, 56, FRAME_HI);
+    rect(ox + 29, oy + 8, 1, 56, FRAME_HI);
+    // glass over the upper half (nobody stands there, so it can be baked in)
+    for (let y = 8; y < 32; y++) for (let x = 3; x < 29; x++) {
+      px(ox + x, oy + y, 176, 208, 228, 34);
+      if (((x + y) % 13) < 2) px(ox + x, oy + y, 236, 246, 255, 30);
+    }
+  }
+  {
+    // glass front for the lower half, idx 171
+    const ox = TILE * 3, oy = TILE * 21;
+    const FRAME = [40, 42, 48], FRAME_HI = [74, 77, 85];
+    for (let y = 0; y < 29; y++) for (let x = 3; x < 29; x++) {
+      px(ox + x, oy + y, 176, 208, 228, 34);
+      if (((x + y + 32) % 13) < 2) px(ox + x, oy + y, 236, 246, 255, 30);
+    }
+    rect(ox, oy, 3, 32, FRAME);
+    rect(ox + 29, oy, 3, 32, FRAME);
+    rect(ox + 2, oy, 1, 29, FRAME_HI);
+    rect(ox + 29, oy, 1, 29, FRAME_HI);
+    rect(ox, oy + 29, 32, 3, FRAME);                            // sill
+    rect(ox, oy + 29, 32, 1, FRAME_HI);
+    rect(ox + 24, oy + 7, 2, 10, [196, 202, 210]);              // door pull
+    rect(ox + 25, oy + 7, 1, 10, [150, 156, 164]);
+  }
+
+  // --- neon baseboard: sits on the floor row against a south wall, line at the bottom ---
+  function neonBase(col, row, capL, capR) {
+    const ox = TILE * col, oy = TILE * row;
+    for (let y = 12; y < 32; y++) for (let x = 0; x < 32; x++) {
+      let f = 1;
+      if (capL) f = Math.min(f, Math.max(0, (x - 3) / 8));
+      if (capR) f = Math.min(f, Math.max(0, (28 - x) / 8));
+      if (f <= 0) continue;
+      const d = 31 - y;
+      if (d === 0) px(ox + x, oy + y, NEON_CORE[0], NEON_CORE[1], NEON_CORE[2], Math.round(255 * f));
+      else if (d === 1) px(ox + x, oy + y, NEON_HOT[0], NEON_HOT[1], NEON_HOT[2], Math.round(235 * f));
+      else {
+        const a = 95 * Math.pow(Math.max(0, 1 - (d - 2) / 17), 2) * f;
+        if (a >= 1) px(ox + x, oy + y, NEON_CORE[0], NEON_CORE[1], NEON_CORE[2], Math.round(a));
+      }
+    }
+  }
+  neonBase(4, 20, true, false);
+  neonBase(5, 20, false, false);
+  neonBase(6, 20, false, true);
+
+  // --- daylight falling in from a side window ---
+  function spill(col, row, fromLeft, vfade) {
+    const ox = TILE * col, oy = TILE * row;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const d = fromLeft ? x : 31 - x;
+      let a = 58 * Math.pow(Math.max(0, 1 - d / 28), 1.6);
+      if (vfade < 0) a *= Math.min(1, (y + 1) / 14);
+      if (vfade > 0) a *= Math.min(1, (32 - y) / 14);
+      if (a >= 1) px(ox + x, oy + y, 255, 240, 212, Math.round(a));
+    }
+  }
+  spill(4, 21, true, -1); spill(5, 21, true, 0); spill(6, 21, true, 1);
+  spill(3, 23, false, -1); spill(4, 23, false, 0); spill(5, 23, false, 1);
+
+  // --- reception desk, 3x2, front facing the arrival mat ---
+  {
+    const ox = 0, oy = TILE * 22, DW = 96;
+    shadow(ox + 48, oy + 59, 46, 4, 90);
+    vgrad(ox + 3, oy + 27, DW - 6, 30, [36, 38, 43], [20, 21, 25]);       // front panel
+    rect(ox + 3, oy + 27, 1, 30, [52, 55, 61]);
+    rect(ox + DW - 4, oy + 27, 1, 30, [14, 15, 18]);
+    vgrad(ox + 2, oy + 6, DW - 4, 20, [220, 222, 226], [202, 204, 209]);  // quartz top
+    rect(ox + 2, oy + 6, DW - 4, 1, [238, 240, 243]);
+    rect(ox + 2, oy + 26, DW - 4, 2, [164, 166, 172]);                    // front lip
+    // Fluted front, not the mark: the desk stands one tile above the logo mat, and two
+    // identical roosters stacked on top of each other read as a stutter, not branding.
+    for (let x = 5; x < DW - 5; x++) {
+      if (x % 4 === 0) rect(ox + x, oy + 29, 1, 26, [50, 53, 59]);
+      else if (x % 4 === 1) rect(ox + x, oy + 29, 1, 26, [14, 15, 18]);
+    }
+    // kick light washing the floor in front
+    for (let x = 6; x < DW - 6; x++) {
+      px(ox + x, oy + 56, NEON_CORE[0], NEON_CORE[1], NEON_CORE[2], 200);
+      for (let d = 1; d <= 6; d++) px(ox + x, oy + 56 + d, NEON_CORE[0], NEON_CORE[1], NEON_CORE[2], Math.round(60 * (1 - d / 7)));
+    }
+    // monitor seen from behind, a tablet, a small plant
+    rect(ox + 12, oy + 9, 24, 12, [46, 48, 54]);
+    rect(ox + 12, oy + 9, 24, 1, [84, 87, 94]);
+    rect(ox + 22, oy + 21, 4, 3, [62, 64, 70]);
+    rect(ox + 44, oy + 15, 14, 8, [58, 62, 70]);
+    rect(ox + 45, oy + 16, 12, 6, [88, 140, 118]);
+    rect(ox + 76, oy + 15, 9, 8, [236, 236, 232]);
+    rect(ox + 76, oy + 21, 9, 2, [196, 196, 192]);
+    ellipse(ox + 80, oy + 12, 6, 4, [52, 122, 68]);
+    ellipse(ox + 78, oy + 10, 3, 3, [84, 160, 96]);
+    ellipse(ox + 83, oy + 11, 2, 2, [70, 146, 84]);
+  }
+
+  // --- tiles derived from the base wall sheet ---
+  const roomPng = PNG.sync.read(fs.readFileSync(path.join(__dirname, "..", "tilesets", "WA_Room_Builder.png")));
+  const ROOM_FIRST = 375, ROOM_COLS = 25;
+  function copyTile(gid, col, row, mul = [1, 1, 1]) {
+    const local = gid - ROOM_FIRST;
+    const sx = (local % ROOM_COLS) * 32, sy = Math.floor(local / ROOM_COLS) * 32;
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) {
+      const si = ((sy + y) * roomPng.width + sx + x) * 4;
+      const di = ((TILE * row + y) * png.width + TILE * col + x) * 4;
+      png.data[di] = clamp(roomPng.data[si] * mul[0]);
+      png.data[di + 1] = clamp(roomPng.data[si + 1] * mul[1]);
+      png.data[di + 2] = clamp(roomPng.data[si + 2] * mul[2]);
+      png.data[di + 3] = roomPng.data[si + 3];
+    }
+  }
+  // The four near-white wall faces, knocked down ~14% with a slight cool cast. These are
+  // what made the whole room read as overlit.
+  const DIM = [0.85, 0.86, 0.88];
+  copyTile(578, 6, 22, DIM);
+  copyTile(603, 7, 22, DIM);
+  copyTile(655, 6, 23, DIM);
+  copyTile(680, 7, 23, DIM);
+
+  // Side-wall windows: the wall tile itself with a glazed slot let into its dark core, so
+  // the purple and amber edges line up with the wall above and below exactly.
+  function windowTile(col, part) {
+    copyTile(477, col, 22);
+    const ox = TILE * col, oy = TILE * 22;
+    let x0 = 32, x1 = -1;
+    for (let x = 0; x < 32; x++) {
+      const i = ((oy + 16) * png.width + ox + x) * 4;
+      const lum = 0.299 * png.data[i] + 0.587 * png.data[i + 1] + 0.114 * png.data[i + 2];
+      if (lum < 60) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+    }
+    const gx0 = x0 + 4, gx1 = x1 - 4, cx = (gx0 + gx1) / 2, hw = (gx1 - gx0) / 2;
+    const yTop = part === "top" ? 5 : 0, yBot = part === "bottom" ? 26 : 31;
+    for (let y = yTop; y <= yBot; y++) for (let x = gx0; x <= gx1; x++) {
+      const t = 1 - Math.abs(x - cx) / (hw + 1);
+      const sheen = ((x + y) % 11) < 2 ? 22 : 0;
+      put(ox + x, oy + y, [104 + 34 * t + sheen, 136 + 38 * t + sheen, 162 + 36 * t + sheen]);
+    }
+    const FR = [156, 160, 168];
+    for (let y = yTop; y <= yBot; y++) { put(ox + gx0 - 1, oy + y, FR); put(ox + gx1 + 1, oy + y, FR); }
+    if (part === "top") for (let x = gx0 - 1; x <= gx1 + 1; x++) put(ox + x, oy + yTop - 1, FR);
+    if (part === "bottom") for (let x = gx0 - 1; x <= gx1 + 1; x++) put(ox + x, oy + yBot + 1, FR);
+    if (part === "middle") for (let x = gx0; x <= gx1; x++) put(ox + x, oy + 15, FR);   // mullion
+  }
+  windowTile(3, "top");
+  windowTile(4, "middle");
+  windowTile(5, "bottom");
 }
 
 const outPath = path.join(__dirname, "..", "tilesets", "Modern_Decor.png");

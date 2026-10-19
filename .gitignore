@@ -27,6 +27,9 @@ dist.zip
 
 # Local map inspection renders (regenerate with scripts/render-map.cjs + crop-map.cjs)
 *.preview.png
-[abcd]-*.png
+[a-z]-*.png
+refit-sheet.png
+walls-sheet.png
+antes-depois.png
 logo-compare.png
 tv-preview.png

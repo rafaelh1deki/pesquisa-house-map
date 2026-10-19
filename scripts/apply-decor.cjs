@@ -105,6 +105,31 @@ const SIGN_TOP = [0, 1, 2, 3], SIGN_BOT = [4, 5, 6, 7];
 const LOGO_TOP = [8, 9, 10], LOGO_BOT = [12, 13, 14];
 const ENERGY_CAN = 11;
 
+// ---------- refit layers ----------
+// The refit's floors, light and wall dimming each live in a layer of their own rather than
+// overwriting the base map's tiles. The base stays intact underneath, so every re-run
+// rebuilds the same result, and any part of the refit can be undone by emptying one layer.
+function ensureLayer(groupName, afterName, name) {
+  const group = map.layers.find((l) => l.type === "group" && l.name === groupName);
+  if (group.layers.some((l) => l.name === name)) return;
+  const at = group.layers.findIndex((l) => l.name === afterName) + 1;
+  group.layers.splice(at, 0, {
+    id: map.nextlayerid++,
+    name,
+    type: "tilelayer",
+    width: map.width,
+    height: map.height,
+    x: 0,
+    y: 0,
+    opacity: 1,
+    visible: true,
+    data: new Array(map.width * map.height).fill(0),
+  });
+}
+ensureLayer("floor", "floor1", "floorMat");     // materials, over the base floor
+ensureLayer("floor", "floor2", "floorLight");   // daylight and neon spill, over the rugs
+ensureLayer("walls", "walls1", "wallShade");    // dimmed wall faces and side windows
+
 // ---------- layer access ----------
 function flatten(layers) {
   let out = [];
@@ -387,6 +412,120 @@ for (let x = 25; x <= 27; x++) set("collisions", x, 3, 0);
   });
   map.nextobjectid = Math.max(map.nextobjectid || 1, id + 1);
 }
+
+// ---------- 15. the refit: a floor plan, materials, and lower light ----------
+const MAT = { concrete: 144, terrazzo: 146, oak: 148, carpet: 150, tile: 160 };
+const BOOTH_TOP = 162, BOOTH_FLOOR = 170, BOOTH_GLASS = 171;
+const NEON_BASE_L = 164, NEON_BASE_M = 165, NEON_BASE_R = 166;
+const SPILL_L = { top: 172, middle: 173, bottom: 174 };
+const SPILL_R = { top: 187, middle: 188, bottom: 189 };
+const DESK_TOP = [176, 177, 178], DESK_BOT = [184, 185, 186];
+const WINDOW = { top: 179, middle: 180, bottom: 181 };
+// bright wall faces in WA_Room_Builder (local index) -> their dimmed copies
+const DIMMED = { 203: 182, 228: 183, 280: 190, 305: 191 };
+const SIDE_WALL = 102;   // the 1-tile vertical wall segment both side walls are built from
+const BASE_FLOOR = room + 358, LOUNGE_CARPET = room + 360;
+
+// --- 15a. one material per room, and a path through the middle ---
+// Rooms used to be told apart only by rugs on one shared pale floor, so they bled into
+// each other. Each now has its own surface, and the circulation axis -- in from the
+// garden, along the row between the desks, to the meeting-room door -- is terrazzo.
+function floorFor(x, y, f1) {
+  if (x <= 5 && y >= 14 && y <= 17) return "oak";                      // reception
+  if (x >= 1 && x <= 6 && y >= 3 && y <= 6 && f1 === LOUNGE_CARPET) return "oak"; // lounge
+  if (f1 !== BASE_FLOOR) return null;
+  if (x >= 1 && x <= 7 && y >= 8 && y <= 13) return "tile";             // kitchen
+  if (x >= 23 && x <= 29 && y >= 3 && y <= 13) return "carpet";         // standup + meeting
+  if ((y === 8 && x >= 8 && x <= 22) || (x === 8 && y >= 9 && y <= 16) || (x === 9 && y >= 14 && y <= 16))
+    return "terrazzo";
+  if (y >= 3 && y <= 13) return "concrete";                             // open office
+  return null;
+}
+for (let y = 0; y < map.height; y++) for (let x = 0; x < W; x++) {
+  const i = y * W + x;
+  if (L.walls1.data[i]) continue;
+  const kind = floorFor(x, y, L.floor1.data[i] & ~FLIP);
+  if (kind) set("floorMat", x, y, MD + MAT[kind] + (x % 2) + 8 * (y % 2));
+}
+
+// the lounge lost its blue carpet to oak, so the seating group gets a rug of its own --
+// but only where the zone outline on floor2 leaves room for one
+if ([2, 3, 4, 5].every((x) => [4, 5].every((y) => !L.floor2.data[y * W + x]))) placeRug(2, 4, 5, 5);
+
+// --- 15b. wall faces knocked down, side windows let in ---
+for (let i = 0; i < L.walls1.data.length; i++) {
+  const raw = L.walls1.data[i];
+  const local = (raw & ~FLIP) - room;
+  if (DIMMED[local] !== undefined) L.wallShade.data[i] = (raw & FLIP) | (MD + DIMMED[local]);
+}
+// Windows only on the two side walls, which had none. Daylight falls on the floor
+// beside each one; under the dimmer interior they read as the room's light sources.
+const sideWindows = [
+  [0, 4, 5], [0, 9, 11],      // lounge; kitchen, over the sink
+  [30, 4, 6], [30, 9, 12],    // standup area; meeting room
+];
+for (const [x, y0, y1] of sideWindows) {
+  for (let y = y0; y <= y1; y++) {
+    const raw = L.walls1.data[y * W + x];
+    if ((raw & ~FLIP) - room !== SIDE_WALL) {
+      console.warn(`window skipped at ${x},${y}: not a plain side wall`);
+      continue;
+    }
+    const part = y === y0 ? "top" : y === y1 ? "bottom" : "middle";
+    set("wallShade", x, y, (raw & FLIP) | (MD + WINDOW[part]));
+    if (x === 0) set("floorLight", 1, y, MD + SPILL_L[part]);
+    else set("floorLight", x - 1, y, MD + SPILL_R[part]);
+  }
+}
+
+// --- 15c. neon carried onto the walls that had none ---
+// The top walls already carry the strip at eye level. The south walls are seen only from
+// above, so their light is a baseboard: a line where wall meets floor, glowing upward.
+function neonBaseboard(x0, x1, y) {
+  for (let x = x0; x <= x1; x++)
+    set("floorLight", x, y, MD + (x === x0 ? NEON_BASE_L : x === x1 ? NEON_BASE_R : NEON_BASE_M));
+}
+neonBaseboard(10, 21, 13);    // open office, along the garden wall
+neonBaseboard(1, 5, 17);      // reception, behind the arrival mat
+
+// --- 15d. call booths in the dead strip between the kitchen and the bench desk ---
+// 18 tiles of bare floor sat on the busiest route in the office. Two glass booths turn it
+// into the one place indoors you can take a call without the office overhearing it.
+for (const x of [9, 10]) {
+  set("furniture2", x, 9, MD + BOOTH_TOP);
+  set("furniture2", x, 10, MD + BOOTH_FLOOR);
+  set("above1", x, 10, MD + BOOTH_GLASS);
+  set("collisions", x, 9, BLOCKED);
+  set("collisions", x, 10, 0);
+}
+
+// --- 15e. reception: a desk to arrive at ---
+// The console and the planter beside it make way for a desk facing the mat, set to the
+// right so the way in from the spawn point (x2) stays open up the left side.
+clear("above1", 2, 14, 4, 14);
+clear("furniture2", 2, 15, 4, 15);
+DESK_TOP.forEach((id, i) => set("furniture2", 3 + i, 14, MD + id));
+DESK_BOT.forEach((id, i) => set("furniture2", 3 + i, 15, MD + id));
+for (let x = 3; x <= 5; x++) for (let y = 14; y <= 15; y++) set("collisions", x, y, BLOCKED);
+// a second armchair facing the first across the mat
+set("furniture2", 1, 16, MD + ARMCHAIR_R);
+set("furniture2", 1, 17, MD + ARMCHAIR_R_B);
+
+// --- 15f. zones the refit needs ---
+function upsertArea(name, x, y, w, h, properties) {
+  const objects = map.layers.find((l) => l.type === "objectgroup").objects;
+  const i = objects.findIndex((o) => o.name === name);
+  // reuse the id on a re-run so the file converges instead of churning ids
+  const id = i >= 0 ? objects[i].id : Math.max(map.nextobjectid || 1, ...objects.map((o) => o.id + 1));
+  if (i >= 0) objects.splice(i, 1);
+  objects.push({
+    id, name, type: "area", visible: true, rotation: 0,
+    x: x * 32, y: y * 32, width: w * 32, height: h * 32, properties,
+  });
+  map.nextobjectid = Math.max(map.nextobjectid || 1, id + 1);
+}
+// silent: whoever steps inside a booth drops out of proximity chat for their call
+upsertArea("callBooths", 9, 10, 2, 1, [{ name: "silent", type: "bool", value: true }]);
 
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);
