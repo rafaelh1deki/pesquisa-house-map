@@ -3,7 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const mapPath = path.join(__dirname, "..", "home-office.tmj");
+const mapPath = path.join(__dirname, "source", "home-office.full.json");
 const map = JSON.parse(fs.readFileSync(mapPath, "utf8"));
 const W = map.width;
 

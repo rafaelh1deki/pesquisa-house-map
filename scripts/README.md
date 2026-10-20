@@ -8,7 +8,8 @@ regenerated and tweaked without a pixel editor.
 ```bash
 node scripts/gen-personal-decor.cjs   # neon "Pesquisa House" sign, logo mat, energy can
 node scripts/gen-modern-decor.cjs     # chairs, furniture, plants, kitchen, arcade, BBQ...
-node scripts/apply-decor.cjs          # writes all of it into home-office.tmj
+node scripts/apply-decor.cjs          # writes all of it into scripts/source/home-office.full.json
+node scripts/compact.cjs              # cuts the unused west wing, writes home-office.tmj
 node scripts/render-map.cjs home-office.tmj home-office.preview.png
 node scripts/gen-thumbnail.cjs        # 512x512 map thumbnail from the render
 ```
@@ -22,7 +23,8 @@ before re-placing them, so running it twice produces a byte-identical map.
 | --- | --- |
 | `gen-personal-decor.cjs` | Builds `tilesets/Personal_Decor.png` — the sign, the logo mat, the can. |
 | `gen-modern-decor.cjs` | Builds `tilesets/Modern_Decor.png` — all the furniture and props. |
-| `apply-decor.cjs` | Places every custom tile into `home-office.tmj` by absolute position. |
+| `apply-decor.cjs` | Places every custom tile into the full map (`source/home-office.full.json`) by absolute position. |
+| `compact.cjs` | Cuts the unused west wing (lounge, kitchen, reception) off the full map and writes the shipped, compact `home-office.tmj`. Set `CUT = 0` to bring the wing back. |
 | `logo-mark.cjs` | The studio logo's geometry plus the anti-aliased stroke rasteriser. Shared by the mat and the framed wall piece so the two can never drift apart. |
 | `script-font.cjs` | A small handwriting alphabet used to bend the neon sign's script. |
 | `render-map.cjs` | Composites a `.tmj` into a flat PNG, for reviewing changes without Tiled. |
@@ -40,3 +42,6 @@ before re-placing them, so running it twice produces a byte-identical map.
   segment and shows up as banding at the seams. See the kitchen counter.
 - **Chairs come in four orientations.** The bench-desk chairs are single sprites centred on
   the boundary between two tiles, not one chair per tile.
+
+The full map is stored as `.json` on purpose: the map build picks up every `.tmj` under the
+project, and a second copy would be built and published as a map of its own.
