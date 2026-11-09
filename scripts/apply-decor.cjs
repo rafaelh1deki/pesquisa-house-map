@@ -521,5 +521,26 @@ function upsertArea(name, x, y, w, h, properties) {
   if (i >= 0) objects.splice(i, 1);
 }
 
+// --- 15g. one screen per space ---
+// Entering a focusable area makes WorkAdventure fit the camera to it and lock it there, so
+// the whole office fills the screen at once instead of scrolling or needing a zoom-out.
+// The garden gets its own frame for the silent zone and the barbecue.
+upsertArea("focusOffice", 7, 0, 24, 15, [
+  { name: "focusable", type: "bool", value: true },
+  { name: "zoomMargin", type: "float", value: 0 },
+]);
+upsertArea("focusGarden", 7, 15, 24, 6, [
+  { name: "focusable", type: "bool", value: true },
+  { name: "zoomMargin", type: "float", value: 0 },
+]);
+// Arrive inside the office, on the path by the garden door, so the map opens on that frame.
+L.start.data.fill(0);
+set("start", 8, 12, 2);
+set("start", 9, 12, 2);
+{
+  const arrival = map.layers.find((l) => l.type === "objectgroup").objects.find((o) => o.name === "from-conference");
+  if (arrival) { arrival.x = 8 * 32; arrival.y = 12 * 32; }
+}
+
 fs.writeFileSync(mapPath, JSON.stringify(map, null, 2));
 console.log(`Modern_Decor firstgid=${MD}, Personal_Decor firstgid=${PD}; decor applied.`);

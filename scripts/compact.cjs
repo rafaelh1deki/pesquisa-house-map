@@ -44,12 +44,8 @@ map.width = newW;
 
 const shift = CUT * 32;
 for (const l of map.layers.filter((l) => l.type === "objectgroup")) {
-  l.objects = l.objects.filter((o) => o.name === "from-conference" || o.x + o.width > shift);
-  for (const o of l.objects) {
-    // the arrival point moves from the reception to just outside the garden door
-    if (o.name === "from-conference") o.x = 1 * 32 + (o.x % 32);
-    else o.x -= shift;
-  }
+  l.objects = l.objects.filter((o) => o.x + o.width > shift);
+  for (const o of l.objects) o.x -= shift;
 }
 
 fs.writeFileSync(dst, JSON.stringify(map, null, 2));
