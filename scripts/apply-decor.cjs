@@ -521,18 +521,22 @@ function upsertArea(name, x, y, w, h, properties) {
   if (i >= 0) objects.splice(i, 1);
 }
 
-// --- 15g. one screen per space ---
-// Entering a focusable area makes WorkAdventure fit the camera to it and lock it there, so
-// the whole office fills the screen at once instead of scrolling or needing a zoom-out.
-// The garden gets its own frame for the silent zone and the barbecue.
-upsertArea("focusOffice", 7, 0, 24, 15, [
-  { name: "focusable", type: "bool", value: true },
-  { name: "zoomMargin", type: "float", value: 0 },
-]);
-upsertArea("focusGarden", 7, 15, 24, 6, [
-  { name: "focusable", type: "bool", value: true },
-  { name: "zoomMargin", type: "float", value: 0 },
-]);
+// --- 15g. rooms the camera zooms into ---
+// src/main.ts pins the camera on the whole map and zooms into these while someone is inside.
+upsertArea("tvArea", 23, 3, 7, 4, []);
+// The meeting room was a focusable area, which would fight the script for the camera.
+{
+  const room = map.layers.find((l) => l.type === "objectgroup").objects.find((o) => o.name === "jitsiMeetingRoom");
+  room.properties = room.properties.filter((p) => p.name !== "focusable" && p.name !== "zoom_margin");
+}
+// the first attempt framed the office and the garden as focusable areas; drop them
+{
+  const objects = map.layers.find((l) => l.type === "objectgroup").objects;
+  for (const name of ["focusOffice", "focusGarden"]) {
+    const i = objects.findIndex((o) => o.name === name);
+    if (i >= 0) objects.splice(i, 1);
+  }
+}
 // Arrive inside the office, on the path by the garden door, so the map opens on that frame.
 L.start.data.fill(0);
 set("start", 8, 12, 2);

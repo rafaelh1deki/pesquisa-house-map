@@ -8077,11 +8077,6 @@
           "name": "jitsiMeetingRoom",
           "properties": [
             {
-              "name": "focusable",
-              "type": "bool",
-              "value": true
-            },
-            {
               "name": "jitsiRoom",
               "type": "string",
               "value": "SalaDeReuniao"
@@ -8090,11 +8085,6 @@
               "name": "jitsiTrigger",
               "type": "string",
               "value": "onaction"
-            },
-            {
-              "name": "zoom_margin",
-              "type": "float",
-              "value": 1
             }
           ],
           "rotation": 0,
@@ -8172,50 +8162,16 @@
           ]
         },
         {
-          "id": 23,
-          "name": "focusOffice",
+          "id": 25,
+          "name": "tvArea",
           "type": "area",
           "visible": true,
           "rotation": 0,
-          "x": 224,
-          "y": 0,
-          "width": 768,
-          "height": 480,
-          "properties": [
-            {
-              "name": "focusable",
-              "type": "bool",
-              "value": true
-            },
-            {
-              "name": "zoomMargin",
-              "type": "float",
-              "value": 0
-            }
-          ]
-        },
-        {
-          "id": 24,
-          "name": "focusGarden",
-          "type": "area",
-          "visible": true,
-          "rotation": 0,
-          "x": 224,
-          "y": 480,
-          "width": 768,
-          "height": 192,
-          "properties": [
-            {
-              "name": "focusable",
-              "type": "bool",
-              "value": true
-            },
-            {
-              "name": "zoomMargin",
-              "type": "float",
-              "value": 0
-            }
-          ]
+          "x": 736,
+          "y": 96,
+          "width": 224,
+          "height": 128,
+          "properties": []
         }
       ],
       "opacity": 1,
@@ -9565,7 +9521,7 @@
     }
   ],
   "nextlayerid": 66,
-  "nextobjectid": 25,
+  "nextobjectid": 26,
   "orientation": "orthogonal",
   "properties": [
     {
