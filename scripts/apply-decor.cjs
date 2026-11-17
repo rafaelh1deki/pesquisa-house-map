@@ -514,6 +514,9 @@ function upsertArea(name, x, y, w, h, properties) {
   });
   map.nextobjectid = Math.max(map.nextobjectid || 1, id + 1);
 }
+// The booths' collisions outlived them on the row above the path; clear them with the zone.
+set("collisions", 9, 9, 0);
+set("collisions", 10, 9, 0);
 // The call booths were tried and dropped; strip their zone from maps that still carry it.
 {
   const objects = map.layers.find((l) => l.type === "objectgroup").objects;
